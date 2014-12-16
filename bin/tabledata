@@ -137,7 +137,7 @@ display_chart();
 
 1;
 # ABSTRACT: Create chart for your data structure
-# PODNAME: chart
+# PODNAME:
 
 =head1 SYNOPSIS
 
