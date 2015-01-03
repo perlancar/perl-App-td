@@ -238,11 +238,6 @@ Pick chart type. Available type: C<line>, C<bar>. Default is C<bar>.
 99 on command-line options error.
 
 
-=head1 TODO
-
-Non-text (e.g. HTML, JPG/PNG) charts.
-
-
 =head1 FAQ
 
 
