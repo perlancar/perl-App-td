@@ -4,47 +4,34 @@
 # VERSION
 
 use 5.010001;
+# IFUNBUILT
 use strict;
 use warnings;
-
-#use App::chart;
-use Getopt::Long qw(:config no_ignore_case bundling);
-use Scalar::Util qw(looks_like_number);
+# END IFUNBUILT
 
 my %Opts = (
+    #input_format => undef,
+    output_format => "text",
 );
-my $Data;
+my $Input; # envres
+my $Input_Form;
+my $Output; # envres
 
 sub parse_cmdline {
-    my $res = GetOptions(
-        'input|i=s'        => \$Opts{input},
-        'output|o=s'       => \$Opts{output},
-        'type|t=s'         => \$Opts{type},
-        'data-column|d=s'  => \$Opts{data_column},
-        'label-column|l=s' => \$Opts{label_column},
-        'chart-height|H=f' => \$Opts{chart_height},
-        'chart-width|W=f'  => \$Opts{chart_width},
-        'y-scale=s'        => \$Opts{y_scale},
+    require Getopt::Long::EvenLess;
+    my $res = Getopt::Long::EvenLess::GetOptions(
+        'output-format|f=s'  => \$Opts{output_format},
         'version|v'        => sub {
-            say "chart version ", ($main::VERSION // '?');
+            say "tabledata version ", ($main::VERSION // '?');
             exit 0;
         },
         'help|h'     => sub {
             print <<USAGE;
 Usage:
-  chart [OPTIONS] < INPUT
-  chart --version
-  chart --help
-Examples:
-  chart -o YAML data.json
+  tabledata [OPTIONS] < INPUT
 Options:
-  --input=s, -i        Input data format (json, yaml, perl; default is json).
-  --output=s, -o       Output format (text).
-  --type=s, -t         Choose chart type.
-  --data-column=s, -d
-  --label-column=s, -l
-  --chart-height=f, -H
-  --chart-width=f, -W
+  --output-format=s, -f
+
 Consult manpage/documentation for more details.
 USAGE
             exit 0;
@@ -53,196 +40,87 @@ USAGE
     exit 99 if !$res;
 }
 
+sub _decode_json {
+    require JSON;
+
+    state $json = JSON->new->allow_nonref;
+    $json->decode(shift);
+}
+
+sub _encode_json {
+    require JSON;
+
+    state $json = JSON->new->allow_nonref;
+    $json->encode(shift);
+}
+
 sub get_input {
-    if (@ARGV) {
-        $Data = [@ARGV];
-        return;
+    require Data::Check::Structure;
+
+    {
+        local $/;
+        $Input = _decode_json(~~<>);
     }
 
-    my @lines = <>;
+    die "Input is not table data\n" unless ref($Input) eq 'ARRAY';
 
-    my $fmt = $Opts{input};
-    if (!$fmt) {
-        if (looks_like_number($lines[0]) || $lines[0] =~ /\t/) {
-            $fmt = "tsv";
-        } else {
-            $fmt = "json";
-        }
+    # give envelope if not enveloped
+    unless (@$Input >= 2 && @$Input <= 4 &&
+                $Input->[0] =~ /\A[2-5]\d\d\z/ &&
+                !ref($Input->[1]) &&
+                ref($Input->[2]) eq 'ARRAY'
+            ) {
+        $Input = [200, "Envelope added by tabledata", $Input];
     }
 
-    if ($fmt eq 'tsv') {
-        $Data = [];
-        for my $line (@lines) {
-            chomp $line;
-            push @$Data, [split(/\t/, $line)];
-        }
-    } elsif ($fmt eq 'tsv+h') {
-        # for now, we encode as
-        my @colnames;
-        if (my $firstline = shift @lines) {
-            chomp $firstline;
-            @colnames = split /\t/, $firstline;
-        }
-        $Data = [];
-        for my $line (@lines) {
-            chomp $line;
-            my $row = [split /\t/, $line];
-            push @$Data, { map { $colnames[$_] => $row->[$_]} 0..@$row-1 };
-        }
-    } elsif ($fmt eq 'json') {
-        require JSON;
-        require Perinci::Result::Util;
-        $Data = JSON->new->allow_nonref->decode(join "", @lines);
-        $Data = $Data->[2] if Perinci::Result::Util::is_env_res($Data);
-    } elsif ($fmt eq 'yaml') {
-        require Perinci::Result::Util;
-        require YAML::Syck;
-        $Data = YAML::Syck::Load(join "", @lines);
-        $Data = $Data->[2] if Perinci::Result::Util::is_env_res($Data);
-    } elsif ($fmt eq 'perl') {
-        $Data = eval(join "", @lines);
+    # detect table form
+    if (ref($Input->[2]) eq 'HASH') {
+        $Input_Form = 'hash';
+    } elsif (Data::Check::Structure::is_aos($Input->[2])) {
+        $Input_Form = 'aos';
+    } elsif (Data::Check::Structure::is_aoaos($Input->[2])) {
+        $Input_Form = 'aoaos';
+    } elsif (Data::Check::Structure::is_aohos($Input->[2])) {
+        $Input_Form = 'aohos';
     } else {
-        warn "Unknown input format, ".
-            "refer to documentation for available formats\n";
-        exit 99;
+        die "Input form is not recognizable as table (must be hash/aos/aoaos/aohos)\n";
     }
 }
 
-sub display_chart {
-    if ($Opts{output} eq 'dump') {
-        require JSON;
-        require TableData::Object;
-        my $tbl = TableData::Object->new($Data);
-        print JSON->new->pretty->encode($tbl->as_aohos);
-    } else {
-        require Text::Chart;
-        binmode(STDOUT, ":utf8");
-        print Text::Chart::gen_text_chart(
-            data         => $Data,
-            type         => $Opts{type},
-            label_column => $Opts{label_column},
-            data_column  => $Opts{data_column},
-            chart_height => $Opts{chart_height},
-            chart_width  => $Opts{chart_width},
-            #y_scale      => $Opts{y_scale},
-        );
-    }
+sub display_output {
+    require Perinci::Result::Format::Lite;
+    print Perinci::Result::Format::Lite::format(
+        $Output, $Opts{output_format});
 }
 
 # MAIN
 
 parse_cmdline();
 get_input();
-display_chart();
+$Output = $Input;
+display_output();
 
 1;
-# ABSTRACT: Create chart for your data structure
+# ABSTRACT: Manipulate table data
 # PODNAME:
 
 =head1 SYNOPSIS
 
 Usage:
 
- % chart [OPTIONS] NUMBER ...
- % chart [OPTIONS] < INPUT
-
-Examples:
-
- % echo '[1,5,10,2,4,6]' | chart -t sparkline
-
- % chart -t sparkline 1 5 10 2 4 6
-
- % cat celine-dion-album-sales.json
- [
-   {
-     "lang": "en",
-     "sales": 3000000,
-     "title": "unison",
-     "year": 1990
-   },
-   {
-     "lang": "en",
-     "sales": 5300000,
-     "title": "celine dion",
-     "year": 1992
-   },
-   {
-     "lang": "en",
-     "sales": 16600000,
-     "title": "the color of my love",
-     "year": 1993
-   },
-   ...
- ]
-
- % chart -l year -d sales celine-dion-album-sales.json
- 1990|**                                            ( 3000000)
- 1992|******                                        ( 5300000)
- 1993|**********************                        (16600000)
- 1996|******************************************    (30300000)
- 1997|********************************************* (32100000)
- 1998|****************                              (12100000)
- 2002|*************                                 (10500000)
- 2003|******                                        ( 5100000)
- 2004|**                                            ( 2600000)
- 2007|***                                           ( 3400000)
- 2013|                                              ( 1300000)
+ % some-command-that-outputs-tabledata | tabledata <subcommand> [options ...]
 
 
 =head1 DESCRIPTION
 
-This program creates a chart for your data structure, either in the form of an
-array, array of arrays, hash, array of hashes. You can use it to quickly
-visualize a data structure on a console.
-
-It accepts input as JSON, or several other alternative formats (see the C<-i>
-option). It by default outputs the chart as ASCII text. Other formats will be
-supported in the future.
-
-This is an early release. More options, chart types, will be added in the
-future.
+B<EARLY RELEASE. SOME FEATURES NOT YET IMPLEMENTED.>
 
 
 =head1 OPTIONS
 
-=over
-
-=item * --input=STR, -i
-
-Pick input format. Available formats: C<tsv> (tab-separated, with no header
-line), C<tsv+h> (tab-separated, with header line), C<json> (parsed using
-L<JSON>), C<yaml> (parsed using L<YAML::Syck>), C<perl> (eval-ed by B<perl>).
-Default is detected using simple heuristics.
-
-=item * --output=STR, -o
-
-Pick output chart format. Available formats: text, dump. Default is text.
-
-=item * --data-column, -d
-
-=item * --label-column, -l
-
-=item * --type, -t
-
-Pick chart type. Available type: C<line>, C<bar>. Default is C<bar>.
-
-=back
-
-
-=head1 EXIT CODES
-
-0 on success.
-
-1 on failure.
-
-99 on command-line options error.
-
-
-=head1 FAQ
-
 
 =head1 SEE ALSO
 
-L<Text::Chart>
+L<TableDef>
 
 =cut
