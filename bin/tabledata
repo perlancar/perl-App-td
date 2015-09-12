@@ -41,14 +41,14 @@ USAGE
 }
 
 sub _decode_json {
-    require JSON;
+    require JSON::XS;
 
-    state $json = JSON->new->allow_nonref;
+    state $json = JSON::XS->new->allow_nonref;
     $json->decode(shift);
 }
 
 sub _encode_json {
-    require JSON;
+    require JSON::XS;
 
     state $json = JSON->new->allow_nonref;
     $json->encode(shift);
