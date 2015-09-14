@@ -20,7 +20,9 @@ my $Output; # envres
 sub parse_cmdline {
     require Getopt::Long::EvenLess;
     my $res = Getopt::Long::EvenLess::GetOptions(
-        'output-format|f=s'  => \$Opts{output_format},
+        'output-format|f=s'  => sub {
+            $Opts{output_format} = $_[1];
+        },
         'version|v'        => sub {
             say "tabledata version ", ($main::VERSION // '?');
             exit 0;
@@ -45,13 +47,6 @@ sub _decode_json {
 
     state $json = JSON::XS->new->allow_nonref;
     $json->decode(shift);
-}
-
-sub _encode_json {
-    require JSON::XS;
-
-    state $json = JSON->new->allow_nonref;
-    $json->encode(shift);
 }
 
 sub get_input {
