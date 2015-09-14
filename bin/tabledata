@@ -18,17 +18,19 @@ my $Input_Form;
 my $Output; # envres
 
 sub parse_cmdline {
-    require Getopt::Long::EvenLess;
-    my $res = Getopt::Long::EvenLess::GetOptions(
-        'output-format|f=s'  => sub {
-            $Opts{output_format} = $_[1];
+    require Getopt::Panjang;
+    my $res = Getopt::Panjang::get_options(
+        spec => {
+            'output-format|f=s' => sub {
+                my %a = @_;
+                $Opts{output_format} = $a{value};
         },
-        'version|v'        => sub {
-            say "tabledata version ", ($main::VERSION // '?');
-            exit 0;
-        },
-        'help|h'     => sub {
-            print <<USAGE;
+            'version|v'        => sub {
+                say "tabledata version ", ($main::VERSION // '?');
+                exit 0;
+            },
+            'help|h'     => sub {
+                print <<USAGE;
 Usage:
   tabledata [OPTIONS] < INPUT
 Options:
@@ -36,7 +38,8 @@ Options:
 
 Consult manpage/documentation for more details.
 USAGE
-            exit 0;
+                exit 0;
+            },
         },
     );
     exit 99 if !$res;
