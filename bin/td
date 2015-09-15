@@ -15,34 +15,48 @@ my %Opts = (
 );
 my $Input; # envres
 my $Input_Form;
+my $SubCmd;
 my $Output; # envres
 
 sub parse_cmdline {
     require Getopt::Panjang;
-    my $res = Getopt::Panjang::get_options(
-        spec => {
-            'output-format|f=s' => sub {
-                my %a = @_;
-                $Opts{output_format} = $a{value};
+
+    my $opt_help;
+    my %common_opts = (
+        'output-format|f=s' => sub {
+            my %a = @_;
+            $Opts{output_format} = $a{value};
         },
-            'version|v'        => sub {
-                say "tabledata version ", ($main::VERSION // '?');
-                exit 0;
-            },
-            'help|h'     => sub {
-                print <<USAGE;
+        'version|v' => sub {
+            say "tabledata version ", ($main::VERSION // '?');
+            exit 0;
+        },
+        'help|h|?' => sub { $opt_help++ },
+    );
+
+    my $res = Getopt::Panjang::get_options(spec => \%common_opts);
+    my $remaining_argv = $res->[3]{'func.remaining_argv'};
+
+    $SubCmd = $remaining_argv->[0] // '';
+    if ($opt_help) {
+        if ($SubCmd eq 'sum') {
+
+        } elsif ($SubCmd ne '') {
+            die "Unknown subcommand '$SubCmd'\n";
+        } else {
+            print <<'_';
 Usage:
-  tabledata [OPTIONS] < INPUT
-Options:
+  tabledata [COMMON_OPTS] <SUBCOMMAND> [SUBCMD_OPTS] < INPUT
+  tabledata --version (or -v)
+  tabledata --help (or -h, -?)
+Common options:
   --output-format=s, -f
 
 Consult manpage/documentation for more details.
-USAGE
-                exit 0;
-            },
-        },
-    );
-    exit 99 if !$res;
+_
+        }
+        exit 0;
+    }
 }
 
 sub _decode_json {
@@ -106,12 +120,36 @@ display_output();
 
 Usage:
 
- % some-command-that-outputs-tabledata | tabledata <subcommand> [options ...]
+ % command-that-outputs-table-data-in-json | td <subcommand> [options ...]
+
+Examples:
+
+ # count number of rows (equivalent to "wc -l" Unix command)
+ % osnames -l --json | td rowcount
+
+ # count number of columns
+ % osnames -l --json | td colcount
+
+ # remove some columns
+ % osnames -l --json | td delcols tags description
+
+ # switch two columns
+ % osnames -l --json | td switchcols tags description
+
+ # sort by column(s)
+ % osnames -l --json | td sort -value
+ % osnames -l --json | td sort value tags
+
+ # add a sum rows, which totals all numeric columns
+ % list-files -l --json | td sum
+
+ # add an average rows, which averages all numeric columns
+ % list-files -l --json | td avg
 
 
 =head1 DESCRIPTION
 
-B<EARLY RELEASE. SOME FEATURES NOT YET IMPLEMENTED.>
+B<EARLY RELEASE. MORE SUBCOMMANDS WILL BE ADDED.>
 
 
 =head1 OPTIONS

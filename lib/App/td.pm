@@ -1,4 +1,4 @@
-package App::tabledata;
+package App::td;
 
 # DATE
 # VERSION
@@ -8,4 +8,4 @@ package App::tabledata;
 
 =head1 DESCRIPTION
 
-See the included script L<tabledata>.
+See the included script L<td>.
