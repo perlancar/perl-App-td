@@ -19,6 +19,19 @@ my $Input_Obj; # TableData::Object::* object
 my $SubCmd;
 my $Output; # envres
 
+sub _get_table_spec_from_envres {
+    my $envres = shift;
+    my $ff = $envres->[3]{'table.fields'};
+    return undef unless $ff;
+    my $spec = {fields=>{}};
+    my $i = 0;
+    for (@$ff) {
+        $spec->{fields}{$_} = {pos=>$i};
+        $i++;
+    }
+    $spec;
+}
+
 sub parse_cmdline {
     require Getopt::Panjang;
 
@@ -120,7 +133,7 @@ sub get_input {
 
     {
         local $/;
-        $Input = _decode_json(~~<>);
+        $Input = _decode_json(~~<STDIN>);
     }
 
     # give envelope if not enveloped
@@ -143,12 +156,14 @@ sub get_input {
         $Input_Obj = TableData::Object::aos->new($Input->[2]);
     } elsif (Data::Check::Structure::is_aoaos($Input->[2])) {
         $Input_Form = 'aoaos';
+        my $spec = _get_table_spec_from_envres($Input);
         require TableData::Object::aoaos;
-        $Input_Obj = TableData::Object::aoaos->new($Input->[2]);
+        $Input_Obj = TableData::Object::aoaos->new($Input->[2], $spec);
     } elsif (Data::Check::Structure::is_aohos($Input->[2])) {
         $Input_Form = 'aohos';
+        my $spec = _get_table_spec_from_envres($Input);
         require TableData::Object::aohos;
-        $Input_Obj = TableData::Object::aohos->new($Input->[2]);
+        $Input_Obj = TableData::Object::aohos->new($Input->[2], $spec);
     } else {
         # simply pass it through
         $Input_Form = '';
@@ -162,6 +177,9 @@ sub process {
         $Output = [200, "OK", $Input_Obj->row_count];
     } elsif ($SubCmd eq 'colcount') {
         $Output = [200, "OK", $Input_Obj->col_count];
+    } elsif ($SubCmd eq 'sort') {
+        my $res = $Input_Obj->sort_rows(@ARGV);
+        $Output = [200, "OK", $res->{data}, $Input->[3]];
     } else {
         $Output = [400, "Unknown subcommand '$SubCmd'"];
     }
