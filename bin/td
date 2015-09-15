@@ -14,7 +14,8 @@ my %Opts = (
     output_format => "text",
 );
 my $Input; # envres
-my $Input_Form;
+my $Input_Form; # hash/aos/aoaos/aohos
+my $Input_Obj; # TableData::Object::* object
 my $SubCmd;
 my $Output; # envres
 
@@ -27,8 +28,11 @@ sub parse_cmdline {
             my %a = @_;
             $Opts{output_format} = $a{value};
         },
+        'json' => sub {
+            $Opts{output_format} = 'json';
+        },
         'version|v' => sub {
-            say "tabledata version ", ($main::VERSION // '?');
+            say "td version ", ($main::VERSION // '?');
             exit 0;
         },
         'help|h|?' => sub { $opt_help++ },
@@ -37,18 +41,54 @@ sub parse_cmdline {
     my $res = Getopt::Panjang::get_options(spec => \%common_opts);
     my $remaining_argv = $res->[3]{'func.remaining_argv'};
 
-    $SubCmd = $remaining_argv->[0] // '';
+    $SubCmd = shift @{ $remaining_argv } // '';
+    @ARGV = @$remaining_argv;
+
+    $opt_help++ unless $SubCmd;
     if ($opt_help) {
         if ($SubCmd eq 'sum') {
-
+            print <<'_';
+Usage:
+  td sum < INPUT
+_
+        } elsif ($SubCmd eq 'avg') {
+            print <<'_';
+Usage:
+  td avg < INPUT
+_
+        } elsif ($SubCmd eq 'rowcount') {
+            print <<'_';
+Usage:
+  td rowcount < INPUT
+_
+        } elsif ($SubCmd eq 'colcount') {
+            print <<'_';
+Usage:
+  td colcount < INPUT
+_
+        } elsif ($SubCmd eq 'sort') {
+            print <<'_';
+Usage:
+  td sort <COLNAME or -COLNAME>... < INPUT
+_
+        } elsif ($SubCmd eq 'switchcols') {
+            print <<'_';
+Usage:
+  td switchcols <COL1> <COL2>
+_
+        } elsif ($SubCmd eq 'delcols') {
+            print <<'_';
+Usage:
+  td delcols <COL>...
+_
         } elsif ($SubCmd ne '') {
             die "Unknown subcommand '$SubCmd'\n";
         } else {
             print <<'_';
 Usage:
-  tabledata [COMMON_OPTS] <SUBCOMMAND> [SUBCMD_OPTS] < INPUT
-  tabledata --version (or -v)
-  tabledata --help (or -h, -?)
+  td [COMMON_OPTS] <SUBCOMMAND> [SUBCMD_OPTS] < INPUT
+  td --version (or -v)
+  td --help (or -h, -?)
 Common options:
   --output-format=s, -f
 
@@ -56,6 +96,15 @@ Consult manpage/documentation for more details.
 _
         }
         exit 0;
+    } elsif ($res->[0] != 200 && (
+        $res->[3]{'func.val_invalid_opts'} ||
+            $res->[3]{'func.val_missing_opts'} ||
+            $res->[3]{'func.ambiguous_opts'} ||
+            # XXX later when subcommands have options too, allow unknown options
+            # and re-get_options() with subcommand's spec
+            $res->[3]{'func.unknown_opts'}
+        )) {
+        die "$res->[1]\n";
     }
 }
 
@@ -74,13 +123,11 @@ sub get_input {
         $Input = _decode_json(~~<>);
     }
 
-    die "Input is not table data\n" unless ref($Input) eq 'ARRAY';
-
     # give envelope if not enveloped
-    unless (@$Input >= 2 && @$Input <= 4 &&
+    unless (ref($Input) eq 'ARRAY' &&
+                @$Input >= 2 && @$Input <= 4 &&
                 $Input->[0] =~ /\A[2-5]\d\d\z/ &&
-                !ref($Input->[1]) &&
-                ref($Input->[2]) eq 'ARRAY'
+                !ref($Input->[1])
             ) {
         $Input = [200, "Envelope added by tabledata", $Input];
     }
@@ -88,28 +135,56 @@ sub get_input {
     # detect table form
     if (ref($Input->[2]) eq 'HASH') {
         $Input_Form = 'hash';
+        require TableData::Object::hash;
+        $Input_Obj = TableData::Object::hash->new($Input->[2]);
     } elsif (Data::Check::Structure::is_aos($Input->[2])) {
         $Input_Form = 'aos';
+        require TableData::Object::aos;
+        $Input_Obj = TableData::Object::aos->new($Input->[2]);
     } elsif (Data::Check::Structure::is_aoaos($Input->[2])) {
         $Input_Form = 'aoaos';
+        require TableData::Object::aoaos;
+        $Input_Obj = TableData::Object::aoaos->new($Input->[2]);
     } elsif (Data::Check::Structure::is_aohos($Input->[2])) {
         $Input_Form = 'aohos';
+        require TableData::Object::aohos;
+        $Input_Obj = TableData::Object::aohos->new($Input->[2]);
     } else {
-        die "Input form is not recognizable as table (must be hash/aos/aoaos/aohos)\n";
+        # simply pass it through
+        $Input_Form = '';
+    }
+}
+
+sub process {
+    if (!$Input_Form) {
+        $Output = $Input;
+    } elsif ($SubCmd eq 'rowcount') {
+        $Output = [200, "OK", $Input_Obj->row_count];
+    } elsif ($SubCmd eq 'colcount') {
+        $Output = [200, "OK", $Input_Obj->col_count];
+    } else {
+        $Output = [400, "Unknown subcommand '$SubCmd'"];
     }
 }
 
 sub display_output {
     require Perinci::Result::Format::Lite;
-    print Perinci::Result::Format::Lite::format(
+    my $fres = Perinci::Result::Format::Lite::format(
         $Output, $Opts{output_format});
+
+    # ux: prefix error message with program name
+    if ($Output->[0] =~ /\A[45]/ && defined($Output->[1])) {
+        $fres = "td: $fres";
+    }
+
+    print $fres;
 }
 
 # MAIN
 
 parse_cmdline();
 get_input();
-$Output = $Input;
+process();
 display_output();
 
 1;
