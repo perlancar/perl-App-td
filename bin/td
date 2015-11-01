@@ -230,7 +230,7 @@ Examples:
  % osnames -l --json | td switchcols tags description
 
  # sort by column(s)
- % osnames -l --json | td sort -value
+ % osnames -l --json | td sort -- -value
  % osnames -l --json | td sort value tags
 
  # add a sum rows, which totals all numeric columns
