@@ -79,20 +79,15 @@ _
 Usage:
   td colcount < INPUT
 _
+        } elsif ($SubCmd eq 'select') {
+            print <<'_';
+Usage:
+  td select <COL,COL2...> [--sort <COL,COL2,...>] < INPUT
+_
         } elsif ($SubCmd eq 'sort') {
             print <<'_';
 Usage:
-  td sort <COLNAME or -COLNAME>... < INPUT
-_
-        } elsif ($SubCmd eq 'switchcols') {
-            print <<'_';
-Usage:
-  td switchcols <COL1> <COL2>
-_
-        } elsif ($SubCmd eq 'delcols') {
-            print <<'_';
-Usage:
-  td delcols <COL>...
+  td sort <COL,COL2...> < INPUT
 _
         } elsif ($SubCmd ne '') {
             die "Unknown subcommand '$SubCmd'\n";
@@ -178,8 +173,25 @@ sub process {
     } elsif ($SubCmd eq 'colcount') {
         $Output = [200, "OK", $Input_Obj->col_count];
     } elsif ($SubCmd eq 'sort') {
-        my $res = $Input_Obj->sort_rows(@ARGV);
-        $Output = [200, "OK", $res->{data}, $Input->[3]];
+        my $res;
+        if ($Input_Form eq 'aohos') {
+            $res = $Input_Obj->select_as_aoaos(undef, undef, \@ARGV);
+        } else {
+            $res = $Input_Obj->select_as_aohos(undef, undef, \@ARGV);
+        }
+        my $ff = $res->{spec}{fields};
+
+        $Output = [200, "OK", $res->{data},
+                   {'table.fields'=>[map$res->{spec}{fields}}];
+    } elsif ($SubCmd eq 'select') {
+        my $res;
+        if ($Input_Form eq 'aohos') {
+            $res = $Input_Obj->select_as_aohos(\@ARGV);
+        } else {
+            $res = $Input_Obj->select_as_aoaos(\@ARGV);
+        }
+        $Output = [200, "OK", $res->{data},
+                   {'table.fields'=>$res->{spec}{fields}}];
     } else {
         $Output = [400, "Unknown subcommand '$SubCmd'"];
     }
@@ -223,26 +235,25 @@ Examples:
  # count number of columns
  % osnames -l --json | td colcount
 
- # remove some columns
- % osnames -l --json | td delcols tags description
-
- # switch two columns
- % osnames -l --json | td switchcols tags description
+ # select some columns
+ % osnames -l --json | td select value description
 
  # sort by column(s)
- % osnames -l --json | td sort -- -value
  % osnames -l --json | td sort value tags
+ % osnames -l --json | td sort -- -value
 
+ # NOT YET IMPLEMENTED
  # add a sum rows, which totals all numeric columns
  % list-files -l --json | td sum
 
+ # NOT YET IMPLEMENTED
  # add an average rows, which averages all numeric columns
  % list-files -l --json | td avg
 
 
 =head1 DESCRIPTION
 
-B<VERY EARLY RELEASE. MORE SUBCOMMANDS WILL BE ADDED.>
+B<EARLY RELEASE. MORE SUBCOMMANDS WILL BE ADDED.>
 
 
 =head1 OPTIONS
