@@ -172,26 +172,30 @@ sub process {
         $Output = [200, "OK", $Input_Obj->row_count];
     } elsif ($SubCmd eq 'colcount') {
         $Output = [200, "OK", $Input_Obj->col_count];
-    } elsif ($SubCmd eq 'sort') {
+    } elsif ($SubCmd =~ /\A(sort|select)\z/) {
         my $res;
-        if ($Input_Form eq 'aohos') {
-            $res = $Input_Obj->select_as_aoaos(undef, undef, \@ARGV);
-        } else {
-            $res = $Input_Obj->select_as_aohos(undef, undef, \@ARGV);
+        if ($SubCmd eq 'sort') {
+            if ($Input_Form eq 'aohos') {
+                $res = $Input_Obj->select_as_aoaos(undef, undef, \@ARGV);
+            } else {
+                $res = $Input_Obj->select_as_aohos(undef, undef, \@ARGV);
+            }
+        } elsif ($SubCmd eq 'select') {
+            if ($Input_Form eq 'aohos') {
+                $res = $Input_Obj->select_as_aohos(\@ARGV);
+            } else {
+                $res = $Input_Obj->select_as_aoaos(\@ARGV);
+            }
         }
+
         my $ff = $res->{spec}{fields};
+        my $tff = [];
+        for (keys %$ff) {
+            $tff->[$ff->{$_}{pos}] = $_;
+        }
 
         $Output = [200, "OK", $res->{data},
-                   {'table.fields'=>[map$res->{spec}{fields}}];
-    } elsif ($SubCmd eq 'select') {
-        my $res;
-        if ($Input_Form eq 'aohos') {
-            $res = $Input_Obj->select_as_aohos(\@ARGV);
-        } else {
-            $res = $Input_Obj->select_as_aoaos(\@ARGV);
-        }
-        $Output = [200, "OK", $res->{data},
-                   {'table.fields'=>$res->{spec}{fields}}];
+                   {'table.fields'=>$tff}];
     } else {
         $Output = [400, "Unknown subcommand '$SubCmd'"];
     }
