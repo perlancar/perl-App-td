@@ -1,5 +1,12 @@
 Revision history for App-td
 
+0.02    2015-11-02 (PERLANCAR)
+
+        - Add subcommand: select.
+
+        - [doc] Fix example for sorting rows by descending order (-COLNAME).
+
+
 0.01    2015-09-15 (PERLANCAR)
 
         - First release.
