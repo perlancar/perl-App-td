@@ -176,9 +176,9 @@ sub process {
         my $res;
         if ($SubCmd eq 'sort') {
             if ($Input_Form eq 'aohos') {
-                $res = $Input_Obj->select_as_aoaos(undef, undef, \@ARGV);
-            } else {
                 $res = $Input_Obj->select_as_aohos(undef, undef, \@ARGV);
+            } else {
+                $res = $Input_Obj->select_as_aoaos(undef, undef, \@ARGV);
             }
         } elsif ($SubCmd eq 'select') {
             if ($Input_Form eq 'aohos') {
