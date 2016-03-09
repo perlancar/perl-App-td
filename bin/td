@@ -117,9 +117,9 @@ _
 }
 
 sub _decode_json {
-    require JSON::XS;
+    require Cpanel::JSON::XS;
 
-    state $json = JSON::XS->new->allow_nonref;
+    state $json = Cpanel::JSON::XS->new->allow_nonref;
     $json->decode(shift);
 }
 
