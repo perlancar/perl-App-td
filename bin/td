@@ -64,10 +64,20 @@ sub parse_cmdline {
 Usage:
   td sum < INPUT
 _
+        } elsif ($SubCmd eq 'sum-row') {
+            print <<'_';
+Usage:
+  td sum-row < INPUT
+_
         } elsif ($SubCmd eq 'avg') {
             print <<'_';
 Usage:
   td avg < INPUT
+_
+        } elsif ($SubCmd eq 'avg-row') {
+            print <<'_';
+Usage:
+  td avg-row < INPUT
 _
         } elsif ($SubCmd eq 'rowcount') {
             print <<'_';
@@ -78,6 +88,11 @@ _
             print <<'_';
 Usage:
   td colcount < INPUT
+_
+        } elsif ($SubCmd eq 'info') {
+            print <<'_';
+Usage:
+  td info < INPUT
 _
         } elsif ($SubCmd eq 'select') {
             print <<'_';
@@ -181,6 +196,40 @@ sub process {
         $Output = [200, "OK", $Input_Obj->row_count];
     } elsif ($SubCmd eq 'colcount') {
         $Output = [200, "OK", $Input_Obj->col_count];
+    } elsif ($SubCmd =~ /\A(sum|sum-row|avg|avg-row)\z/) {
+        require Scalar::Util;
+        my $cols = $Input_Obj->cols_by_idx;
+        my $rows = $Input_Obj->rows_as_aoaos;
+        my $sum_row = [map {0} @$cols];
+        for my $i (0..$#{$rows}) {
+            my $row = $rows->[$i];
+            for my $j (0..@$cols-1) {
+                $sum_row->[$j] += $row->[$j]
+                    if Scalar::Util::looks_like_number($row->[$j]);
+            }
+        }
+        my $avg_row;
+        if ($SubCmd =~ /avg/) {
+            if (@$rows) {
+                $avg_row = [map { $_ / @$rows } @$sum_row];
+            } else {
+                $avg_row = [map {0} @$cols];
+            }
+        }
+        # XXX return aohos if input is aohos
+        if ($SubCmd eq 'sum') {
+            $Output = [200, "OK", [$sum_row],
+                       {'table.fields' => $cols}];
+        } elsif ($SubCmd eq 'sum-row') {
+            $Output = [200, "OK", [@$rows, $sum_row],
+                       {'table.fields' => $cols}];
+        } elsif ($SubCmd eq 'avg') {
+            $Output = [200, "OK", [$avg_row],
+                       {'table.fields' => $cols}];
+        } elsif ($SubCmd eq 'avg-row') {
+            $Output = [200, "OK", [@$rows, $avg_row],
+                       {'table.fields' => $cols}];
+        }
     } elsif ($SubCmd =~ /\A(sort|select)\z/) {
         my $res;
         if ($SubCmd eq 'sort') {
@@ -248,19 +297,26 @@ Examples:
  # count number of columns
  % osnames -l --json | td colcount
 
+ # info about table (form, rowcount, colcount, column names, etc)
+ % osnames -l --json | td info
+
  # select some columns
  % osnames -l --json | td select value description
 
- # sort by column(s)
+ # sort by column(s) (add "-" prefix to for descending order)
  % osnames -l --json | td sort value tags
  % osnames -l --json | td sort -- -value
 
- # NOT YET IMPLEMENTED
- # add a sum rows, which totals all numeric columns
+ # return sum of all numeric columns
  % list-files -l --json | td sum
 
- # NOT YET IMPLEMENTED
- # add an average rows, which averages all numeric columns
+ # append a sum row
+ % list-files -l --json | td sum-row
+
+ # return average of all numeric columns
+ % list-files -l --json | td avg
+
+ # append an average row
  % list-files -l --json | td avg
 
 
