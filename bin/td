@@ -168,6 +168,15 @@ sub get_input {
 sub process {
     if (!$Input_Form) {
         $Output = $Input;
+    } elsif ($SubCmd eq 'info') {
+        my $form = ref($Input_Obj); $form =~ s/^TableData::Object:://;
+        my $info = {
+            form => $form,
+            rowcount => $Input_Obj->row_count,
+            colcount => $Input_Obj->col_count,
+            cols => join(", ", @{ $Input_Obj->cols_by_idx }),
+        };
+        $Output = [200, "OK", $info];
     } elsif ($SubCmd eq 'rowcount') {
         $Output = [200, "OK", $Input_Obj->row_count];
     } elsif ($SubCmd eq 'colcount') {
