@@ -1,8 +1,21 @@
 Revision history for App-td
 
+0.06    2016-04-15 (PERLANCAR)
+
+        - Rewrite to use Perinci::CmdLine. This increases startup overhead but
+          eases development and enables tab completion.
+
+        - Write description, remove "Early Release" label.
+
+        - Add actions: head, tail, colnames-row, rowcount-row.
+
+        - [Bugfix] Don't write empty table.fields when input does not have table
+          spec.
+
+
 0.05    2016-04-14 (PERLANCAR)
 
-        - Add/implement subcommands 'info', 'sum', 'sum-row', 'avg', 'avg-row'.
+        - Add/implement actions 'info', 'sum', 'sum-row', 'avg', 'avg-row'.
 
 
 0.04    2016-03-09 (PERLANCAR)
