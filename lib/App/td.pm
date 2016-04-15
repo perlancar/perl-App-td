@@ -70,6 +70,9 @@ Next, you can use these actions:
     # append a row containing rowcount
     % osnames -l --json | td rowcount-row
 
+    # append a row containing column names
+    % lcpan related-mods Perinci::CmdLine | td colnames-row
+
     # count number of columns
     % osnames -l --json | td colcount
 
@@ -101,6 +104,7 @@ _
                                             avg-row
                                             colcount
                                             colcount-row
+                                            colnames-row
                                             head
                                             info
                                             rowcount
@@ -196,7 +200,6 @@ sub td {
             last;
         }
 
-        # XXX return aohos as aohos again
         if ($action eq 'rowcount-row') {
             my $cols = $input_obj->cols_by_idx;
             my $rows = $input_obj->rows_as_aoaos;
@@ -209,6 +212,15 @@ sub td {
 
         if ($action eq 'colcount') {
             $output = [200, "OK", $input_obj->col_count];
+            last;
+        }
+
+        if ($action eq 'colnames-row') {
+            my $cols = $input_obj->cols_by_idx;
+            my $rows = $input_obj->rows_as_aoaos;
+            my $colnames_row = [map {$cols->[$_]} 0..$#{$cols}];
+            $output = [200, "OK", [@$rows, $colnames_row],
+                       {'table.fields' => $cols}];
             last;
         }
 
