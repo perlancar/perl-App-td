@@ -79,6 +79,12 @@ Next, you can use these actions:
     # select some columns
     % osnames -l --json | td select value description
 
+    # only show first 5 rows
+    % osnames -l --json | td head -n5
+
+    # only show last 5 rows
+    % osnames -l --json | td tail -n5
+
     # sort by column(s) (add "-" prefix to for descending order)
     % osnames -l --json | td sort value tags
     % osnames -l --json | td sort -- -value
@@ -129,6 +135,12 @@ _
             default => [],
             pos => 1,
             greedy => 1,
+        },
+
+        # XXX only for head, tail
+        lines => {
+            schema => ['int*', min=>0],
+            cmdline_aliases => {n=>{}},
         },
     },
 };
@@ -207,6 +219,19 @@ sub td {
             $rowcount_row->[0] = $input_obj->row_count if @$rowcount_row;
             $output = [200, "OK", [@$rows, $rowcount_row],
                        {'table.fields' => $cols}];
+            last;
+        }
+
+        if ($action eq 'head' || $action eq 'tail') {
+            my $cols = $input_obj->cols_by_idx;
+            my $rows = $input_obj->rows_as_aoaos;
+            if ($action eq 'head') {
+                splice @$rows, $args{lines} if $args{lines} < @$rows;
+            } else {
+                splice @$rows, 0, @$rows - $args{lines}
+                    if $args{lines} < @$rows;
+            }
+            $output = [200, "OK", $rows, {'table.fields' => $cols}];
             last;
         }
 
