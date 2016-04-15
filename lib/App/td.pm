@@ -67,6 +67,9 @@ Next, you can use these actions:
     # count number of rows (equivalent to "wc -l" Unix command)
     % osnames -l --json | td rowcount
 
+    # append a row containing rowcount
+    % osnames -l --json | td rowcount-row
+
     # count number of columns
     % osnames -l --json | td colcount
 
@@ -190,6 +193,17 @@ sub td {
 
         if ($action eq 'rowcount') {
             $output = [200, "OK", $input_obj->row_count];
+            last;
+        }
+
+        # XXX return aohos as aohos again
+        if ($action eq 'rowcount-row') {
+            my $cols = $input_obj->cols_by_idx;
+            my $rows = $input_obj->rows_as_aoaos;
+            my $rowcount_row = [map {''} @$cols];
+            $rowcount_row->[0] = $input_obj->row_count if @$rowcount_row;
+            $output = [200, "OK", [@$rows, $rowcount_row],
+                       {'table.fields' => $cols}];
             last;
         }
 
