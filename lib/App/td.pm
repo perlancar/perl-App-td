@@ -252,14 +252,16 @@ sub td {
                 }
             }
 
-            my $ff = $res->{spec}{fields};
-            my $tff = [];
-            for (keys %$ff) {
-                $tff->[$ff->{$_}{pos}] = $_;
+            my $resmeta = {};
+            {
+                my $ff = $res->{spec}{fields} or last;
+                my $tff = [];
+                for (keys %$ff) {
+                    $tff->[$ff->{$_}{pos}] = $_;
+                }
+                $resmeta->{'table.fields'} = $tff;
             }
-
-            $output = [200, "OK", $res->{data},
-                       {'table.fields'=>$tff}];
+            $output = [200, "OK", $res->{data}, $resmeta];
             last;
         }
 
