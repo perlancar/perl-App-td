@@ -9,16 +9,26 @@ use strict;
 use warnings;
 #END IFUNBUILT
 
+use PerlX::Maybe;
+
 our %SPEC;
 
 sub _get_table_spec_from_envres {
     my $envres = shift;
-    my $ff = $envres->[3]{'table.fields'};
-    return undef unless $ff;
+    my $tf  = $envres->[3]{'table.fields'};
+    my $tfa = $envres->[3]{'table.field_aligns'};
+    my $tff = $envres->[3]{'table.field_formats'};
+    my $tfu = $envres->[3]{'table.field_units'};
+    return undef unless $tf;
     my $spec = {fields=>{}};
     my $i = 0;
-    for (@$ff) {
-        $spec->{fields}{$_} = {pos=>$i};
+    for (@$tf) {
+        $spec->{fields}{$_} = {
+            pos=>$i,
+            maybe _align  => $tfa->[$i],
+            maybe _format => $tff->[$i],
+            maybe _unit   => $tfu->[$i],
+        };
         $i++;
     }
     $spec;
@@ -306,12 +316,23 @@ sub td {
 
             my $resmeta = {};
             {
-                my $ff = $res->{spec}{fields} or last;
+                my $ff  = $res->{spec}{fields} or last;
+                my $tf  = [];
+                my $tfa = [];
                 my $tff = [];
+                my $tfu = [];
                 for (keys %$ff) {
-                    $tff->[$ff->{$_}{pos}] = $_;
-                }
-                $resmeta->{'table.fields'} = $tff;
+                    my $f = $ff->{$_};
+                    my $i = $f->{pos};
+                    $tf ->[$i] = $_;
+                    $tfa->[$i] = $f->{_align};
+                    $tff->[$i] = $f->{_format};
+                    $tfu->[$i] = $f->{_unit};
+               }
+                $resmeta->{'table.fields'}        = $tf;
+                $resmeta->{'table.field_aligns'}  = $tfa;
+                $resmeta->{'table.field_formats'} = $tff;
+                $resmeta->{'table.field_units'}   = $tfu;
             }
             $output = [200, "OK", $res->{data}, $resmeta];
             last;
