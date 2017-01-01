@@ -1,5 +1,10 @@
 Revision history for App-td
 
+0.08    2017-01-01 (PERLANCAR)
+
+	- Add action: rownum-col.
+
+
 0.07    2016-06-26 (PERLANCAR)
 
         - select: Pass information from input's
