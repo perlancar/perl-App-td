@@ -112,6 +112,9 @@ Next, you can use these actions:
     # append an average row
     % list-files -l --json | td avg-row
 
+    # add a row number column (1, 2, 3, ...)
+    % list-files -l --json | td rownum-col
+
 _
     args => {
         action => {
@@ -126,6 +129,7 @@ _
                                             info
                                             rowcount
                                             rowcount-row
+                                            rownum-col
                                             select
                                             sort
                                             sum
@@ -257,6 +261,14 @@ sub td {
             my $colnames_row = [map {$cols->[$_]} 0..$#{$cols}];
             $output = [200, "OK", [@$rows, $colnames_row],
                        {'table.fields' => $cols}];
+            last;
+        }
+
+        if ($action eq 'rownum-col') {
+            $input_obj->add_col('_rownum', 0); # XXX if table already has that column, use _rownum2, ...
+            $input_obj->set_col_val(_rownum => sub { my %a = @_; $a{row_idx}+1 });
+            $output = [200, "OK", $input_obj->{data},
+                       {'table.fields' => $input_obj->{cols_by_idx}}];
             last;
         }
 
