@@ -222,12 +222,12 @@ sub td {
             last;
         }
 
-        if ($action eq 'rowcount') {
+        if ($action eq 'rowcount' || $action eq 'wc') {
             $output = [200, "OK", $input_obj->row_count];
             last;
         }
 
-        if ($action eq 'rowcount-row') {
+        if ($action eq 'rowcount-row' || $action eq 'wc-row') {
             my $cols = $input_obj->cols_by_idx;
             my $rows = $input_obj->rows_as_aoaos;
             my $rowcount_row = [map {''} @$cols];
