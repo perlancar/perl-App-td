@@ -14,12 +14,12 @@ use PerlX::Maybe;
 our %SPEC;
 
 our %actions = (
-    'actions' => {summary=>'List available actions', req_input=>0}, # TODO
+    'actions' => {summary=>'List available actions', req_input=>0},
     'avg-row' => {summary=>'Append an average row'},
     'avg' => {summary=>'Return average of all numeric columns'},
     'colcount-row' => {summary=>'Append a row containing number of columns'},
     'colcount' => {summary=>'Count number of columns'},
-    'colnames' => {summary=>'Return only the row containing column names'}, # TODO
+    'colnames' => {summary=>'Return only the row containing column names'},
     'colnames-row' => {summary=>'Append a row containing column names'},
     'head' => {summary=>'Only return the first N rows'},
     'info' => {summary=>'Check if input is table data and show information about the table'},
@@ -102,6 +102,9 @@ Next, you can use these actions:
 
     # append a row containing rowcount
     % osnames -l --json | td rowcount-row
+
+    # return the column names only
+    % lcpan related-mods Perinci::CmdLine | td colnames
 
     # append a row containing column names
     % lcpan related-mods Perinci::CmdLine | td colnames-row
@@ -277,6 +280,14 @@ sub td {
 
         if ($action eq 'colcount') {
             $output = [200, "OK", $input_obj->col_count];
+            last;
+        }
+
+        if ($action eq 'colnames') {
+            my $cols = $input_obj->cols_by_idx;
+            my $rows = $input_obj->rows_as_aoaos;
+            my $colnames_row = [map {$cols->[$_]} 0..$#{$cols}];
+            $output = [200, "OK", $colnames_row];
             last;
         }
 
