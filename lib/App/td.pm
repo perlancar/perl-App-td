@@ -117,9 +117,13 @@ Next, you can use these actions:
 
     # only show first 5 rows
     % osnames -l --json | td head -n5
+    # show all but the last 5 rows
+    % osnames -l --json | td head -n -5
 
     # only show last 5 rows
     % osnames -l --json | td tail -n5
+    # show rows from the row 5 onwards
+    % osnames -l --json | td tail -n +5
 
     # sort by column(s) (add "-" prefix to for descending order)
     % osnames -l --json | td sort value tags
@@ -166,7 +170,7 @@ _
 
         # XXX only for head, tail
         lines => {
-            schema => ['int*', min=>0],
+            schema => ['str*', match=>qr/\A[+-]?[0-9]+\z/],
             cmdline_aliases => {n=>{}},
         },
 
@@ -268,11 +272,26 @@ sub td {
         if ($action eq 'head' || $action eq 'tail') {
             my $cols = $input_obj->cols_by_idx;
             my $rows = $input_obj->rows_as_aoaos;
+            my $n = $args{lines} // 5;
             if ($action eq 'head') {
-                splice @$rows, $args{lines} if $args{lines} < @$rows;
+                if ($n =~ s/\A\+//) {
+                    if ($n >= @$rows) {
+                        $rows = [];
+                    } else {
+                        splice @$rows, @$rows - $n;
+                    }
+                } else {
+                    splice @$rows, $n if $n < @$rows;
+                }
             } else {
-                splice @$rows, 0, @$rows - $args{lines}
-                    if $args{lines} < @$rows;
+                if ($n < 0) {
+                    $output = [400, "Cannot tail negative number of rows"];
+                    last;
+                } elsif ($n =~ s/\A\+//) {
+                    splice @$rows, 0, $n-1 if $n >= 1;
+                } else {
+                    splice @$rows, 0, @$rows - $n if $n < @$rows;
+                }
             }
             $output = [200, "OK", $rows, {'table.fields' => $cols}];
             last;
