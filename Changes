@@ -1,3 +1,8 @@
+0.092   2019-01-16 (PERLANCAR)
+
+	- Tweak CLI: skip reading config & env.
+
+
 0.091   2019-01-16 (PERLANCAR)
 
 	- Fix Rinci metadata.
