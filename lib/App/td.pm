@@ -13,6 +13,28 @@ use PerlX::Maybe;
 
 our %SPEC;
 
+our %actions = (
+    'actions' => {summary=>'List available actions', req_input=>0}, # TODO
+    'avg-row' => {summary=>'Append an average row'},
+    'avg' => {summary=>'Return average of all numeric columns'},
+    'colcount-row' => {summary=>'Append a row containing number of columns'},
+    'colcount' => {summary=>'Count number of columns'},
+    'colnames' => {summary=>'Return only the row containing column names'}, # TODO
+    'colnames-row' => {summary=>'Append a row containing column names'},
+    'head' => {summary=>'Only return the first N rows'},
+    'info' => {summary=>'Check if input is table data and show information about the table'},
+    'rowcount-row' => {summary=>'Count number of rows (equivalent to "wc -l" in Unix)'},
+    'rowcount' => {summary=>'Append a row containing rowcount'},
+    'rownum-col' => {summary=>'Add a column containing row number'},
+    'select' => {summary=>'Select one or more columns'},
+    'sort' => {summary=>'Sort rows'},
+    'sum-row' => {summary=>'Append a row containing sums'},
+    'sum' => {summary=>'Return a row containing sum of all numeric columns'},
+    'tail' => {summary=>'Only return the last N rows'},
+    'wc-row' => {summary=>'Alias for wc-row'},
+    'wc' => {summary=>'Alias for rowcount'},
+);
+
 sub _get_table_spec_from_envres {
     my $envres = shift;
     my $tf  = $envres->[3]{'table.fields'};
@@ -115,29 +137,16 @@ Next, you can use these actions:
     # add a row number column (1, 2, 3, ...)
     % list-files -l --json | td rownum-col
 
+Use this to list all the available actions:
+
+    % td actions
+    % td actions -l ;# show details
+
 _
     args => {
         action => {
             summary => 'Action to perform on input table',
-            schema => ['str*', in => [qw/
-                                            avg
-                                            avg-row
-                                            colcount
-                                            colcount-row
-                                            colnames-row
-                                            head
-                                            info
-                                            rowcount
-                                            rowcount-row
-                                            rownum-col
-                                            select
-                                            sort
-                                            sum
-                                            sum-row
-                                            tail
-                                            wc
-                                            wc-row
-                                        /]],
+            schema => ['str*', in => [sort keys %actions]],
             req => 1,
             pos => 0,
             description => <<'_',
@@ -157,6 +166,12 @@ _
             schema => ['int*', min=>0],
             cmdline_aliases => {n=>{}},
         },
+
+        # XXX only for actions
+        detail => {
+            schema => 'bool*',
+            cmdline_aliases => {l=>{}},
+        },
     },
 };
 sub td {
@@ -167,6 +182,7 @@ sub td {
     my ($input, $input_form, $input_obj);
   GET_INPUT:
     {
+        last unless $actions{$action}{req_input} // 1;
         require Data::Check::Structure;
         eval {
             local $/;
@@ -210,6 +226,15 @@ sub td {
     my $output;
   PROCESS:
     {
+        if ($action eq 'actions') {
+            if ($args{detail}) {
+                $output = [200, "OK", [map {+{name=>$_, summary=>$actions{$_}{summary}}} sort keys %actions]];
+            } else {
+                $output = [200, "OK", [sort keys %actions]];
+            }
+            last;
+        }
+
         if ($action eq 'info') {
             my $form = ref($input_obj); $form =~ s/^TableData::Object:://;
             my $info = {
