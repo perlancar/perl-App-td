@@ -184,7 +184,7 @@ _
 
         exclude_columns => {
             'x.name.is_plural' => 1,
-            'x.name.singular' => ['exclude_column'],
+            'x.name.singular' => 'exclude_column',
             schema => ['array*', of=>'str*'],
             cmdline_aliases => {e=>{}},
             tags => ['category:select-action'],
