@@ -114,6 +114,8 @@ Next, you can use these actions:
 
     # select some columns
     % osnames -l --json | td select value description
+    # select all columns but some
+    % osnames -l --json | td select '*' -e value -e description
 
     # only show first 5 rows
     % osnames -l --json | td head -n5
@@ -168,16 +170,24 @@ _
             greedy => 1,
         },
 
-        # XXX only for head, tail
         lines => {
             schema => ['str*', match=>qr/\A[+-]?[0-9]+\z/],
             cmdline_aliases => {n=>{}},
+            tags => ['category:head-action', 'category:tail-action'],
         },
 
-        # XXX only for actions
         detail => {
             schema => 'bool*',
             cmdline_aliases => {l=>{}},
+            tags => ['category:actions-action'],
+        },
+
+        exclude_columns => {
+            'x.name.is_plural' => 1,
+            'x.name.singular' => ['exclude_column'],
+            schema => ['array*', of=>'str*'],
+            cmdline_aliases => {e=>{}},
+            tags => ['category:select-action'],
         },
     },
 };
@@ -304,7 +314,6 @@ sub td {
 
         if ($action eq 'colnames') {
             my $cols = $input_obj->cols_by_idx;
-            my $rows = $input_obj->rows_as_aoaos;
             my $colnames_row = [map {$cols->[$_]} 0..$#{$cols}];
             $output = [200, "OK", $colnames_row];
             last;
@@ -369,15 +378,16 @@ sub td {
             my $res;
             if ($action eq 'sort') {
                 if ($input_form eq 'aohos') {
-                    $res = $input_obj->select_as_aohos(undef, undef, $argv);
+                    $res = $input_obj->select_as_aohos(undef, undef, undef, $argv);
                 } else {
-                    $res = $input_obj->select_as_aoaos(undef, undef, $argv);
+                    $res = $input_obj->select_as_aoaos(undef, undef, undef, $argv);
                 }
             } elsif ($action eq 'select') {
+                my $excl_cols = $args{exclude_columns} // [];
                 if ($input_form eq 'aohos') {
-                    $res = $input_obj->select_as_aohos($argv);
+                    $res = $input_obj->select_as_aohos($argv, $excl_cols);
                 } else {
-                    $res = $input_obj->select_as_aoaos($argv);
+                    $res = $input_obj->select_as_aoaos($argv, $excl_cols);
                 }
             }
 
