@@ -1,3 +1,8 @@
+0.091   2019-01-16 (PERLANCAR)
+
+	- Fix Rinci metadata.
+
+
 0.090   2019-01-16 (PERLANCAR)
 
 	- select: support '*' and --exclude-column (-e).
