@@ -325,7 +325,7 @@ sub td {
 
         if ($action eq 'head' || $action eq 'tail') {
             my $cols = $input_obj->cols_by_idx;
-            my $rows = $input_obj->rows_as_aoaos;
+            my $rows = $input_obj->rows;
             my $n = $args{lines} // 5;
             if ($action eq 'head') {
                 if ($n =~ s/\A\+//) {
@@ -365,8 +365,15 @@ sub td {
 
         if ($action eq 'colnames-row') {
             my $cols = $input_obj->cols_by_idx;
-            my $rows = $input_obj->rows_as_aoaos;
-            my $colnames_row = [map {$cols->[$_]} 0..$#{$cols}];
+            my $rows = $input_obj->rows;
+            my $colnames_row;
+            if (@$rows && ref $rows->[0] eq 'HASH') {
+                $colnames_row = $input_obj->cols_by_name;
+            } elsif (@$rows && ref $rows->[0] eq 'ARRAY') {
+                $colnames_row = [map {$cols->[$_]} 0..$#{$cols}];
+            } else {
+                $colnames_row = $cols->[0];
+            }
             $output = [200, "OK", [@$rows, $colnames_row],
                        {'table.fields' => $cols}];
             last;
@@ -383,35 +390,45 @@ sub td {
         if ($action =~ /\A(sum|sum-row|avg|avg-row)\z/) {
             require Scalar::Util;
             my $cols = $input_obj->cols_by_idx;
-            my $rows = $input_obj->rows_as_aoaos;
-            my $sum_row = [map {0} @$cols];
-            for my $i (0..$#{$rows}) {
-                my $row = $rows->[$i];
+            my $rows = $input_obj->rows;
+            # XXX optimize by not producing two versions of rows
+            my $rows_as_aoaos = $input_obj->rows_as_aoaos;
+            my $sums = [map {0} @$cols];
+            for my $i (0..$#{$rows_as_aoaos}) {
+                my $row = $rows_as_aoaos->[$i];
                 for my $j (0..@$cols-1) {
-                    $sum_row->[$j] += $row->[$j]
+                    $sums->[$j] += $row->[$j]
                         if Scalar::Util::looks_like_number($row->[$j]);
                 }
             }
-            my $avg_row;
+            my $avgs;
+            my $results;
             if ($action =~ /avg/) {
                 if (@$rows) {
-                    $avg_row = [map { $_ / @$rows } @$sum_row];
+                    $avgs = [map { $_ / @$rows } @$sums];
                 } else {
-                    $avg_row = [map {0} @$cols];
+                    $avgs = [map {0} @$cols];
                 }
+                $results = $avgs;
+            } else {
+                $results = $sums;
             }
-            # XXX return aohos if input is aohos
-            if ($action eq 'sum') {
-                $output = [200, "OK", [$sum_row],
+
+            my $result_row;
+            if (@$rows && ref $rows->[0] eq 'HASH') {
+                $result_row = {map {$cols->[$_] => $results->[$_]}
+                                   0..$#{$cols}};
+            } elsif (@$rows && ref $rows->[0] eq 'ARRAY') {
+                $result_row = $results;
+            } else {
+                $result_row = $results->[0];
+            }
+
+            if ($action =~ /-row/) {
+                $output = [200, "OK", [@$rows, $result_row],
                            {'table.fields' => $cols}];
-            } elsif ($action eq 'sum-row') {
-                $output = [200, "OK", [@$rows, $sum_row],
-                           {'table.fields' => $cols}];
-            } elsif ($action eq 'avg') {
-                $output = [200, "OK", [$avg_row],
-                           {'table.fields' => $cols}];
-            } elsif ($action eq 'avg-row') {
-                $output = [200, "OK", [@$rows, $avg_row],
+            } else {
+                $output = [200, "OK", $result_row,
                            {'table.fields' => $cols}];
             }
             last;
