@@ -29,6 +29,7 @@ our %actions = (
     'rowcount' => {summary=>'Append a row containing rowcount'},
     'rownum-col' => {summary=>'Add a column containing row number'},
     'select' => {summary=>'Select one or more columns'},
+    'shuf' => {summary=>'Generate random permutations of rows'},
     'sort' => {summary=>'Sort rows'},
     'sum-row' => {summary=>'Append a row containing sums'},
     'sum' => {summary=>'Return a row containing sum of all numeric columns'},
@@ -203,6 +204,13 @@ _
             schema => 'bool*',
             cmdline_aliases => {l=>{}},
             tags => ['category:actions-action'],
+        },
+
+        repeat => {
+            summary => 'Allow duplicates',
+            schema => 'bool*',
+            cmdline_aliases => {r=>{}},
+            tags => ['category:shuf-action'],
         },
 
         exclude_columns => {
@@ -431,6 +439,24 @@ sub td {
                 $output = [200, "OK", $result_row,
                            {'table.fields' => $cols}];
             }
+            last;
+        }
+
+        if ($action eq 'shuf') {
+            my $cols = $input_obj->cols_by_idx;
+            my $input_rows = $input_obj->rows;
+            my @output_rows;
+            if ($args{repeat}) {
+                for my $i (1 .. ($args{lines} // scalar(@$input_rows))) {
+                    $output_rows[$i-1] = $input_rows->[rand() * @$input_rows];
+                }
+            } else {
+                require List::MoreUtils;
+                @output_rows = List::MoreUtils::samples(
+                    $args{lines} // scalar(@$input_rows),
+                    @$input_rows);
+            }
+            $output = [200, "OK", \@output_rows, {'table.fields' => $cols}];
             last;
         }
 
