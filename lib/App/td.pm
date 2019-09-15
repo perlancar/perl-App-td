@@ -15,6 +15,8 @@ our %SPEC;
 
 our %actions = (
     'actions' => {summary=>'List available actions', req_input=>0},
+    'as-aoaos' => {summary=>'Convert table data to aoaos form'},
+    'as-aohos' => {summary=>'Convert table data to aohos form'},
     'avg-row' => {summary=>'Append an average row'},
     'avg' => {summary=>'Return average of all numeric columns'},
     'colcount-row' => {summary=>'Append a row containing number of columns'},
@@ -99,6 +101,12 @@ Next, you can use these actions:
 
  # List available actions
  % td actions
+
+ # Convert table data (which might be hash, aos, or aohos) to aoaos form
+ % list-files -l --json | td as-aoaos
+
+ # Convert table data (which might be hash, aos, or aoaos) to aohos form
+ % list-files -l --json | td as-aohos
 
  # Calculate arithmetic average of numeric columns
  % list-files -l --json | td avg
@@ -284,11 +292,32 @@ sub td {
             last;
         }
 
-        if ($action eq 'rowcount-row' || $action eq 'wc-row') {
+        if ($action eq 'as-aoaos') {
             my $cols = $input_obj->cols_by_idx;
             my $rows = $input_obj->rows_as_aoaos;
-            my $rowcount_row = [map {''} @$cols];
-            $rowcount_row->[0] = $input_obj->row_count if @$rowcount_row;
+            $output = [200, "OK", $rows, {'table.fields' => $cols}];
+            last;
+        }
+
+        if ($action eq 'as-aohos') {
+            my $cols = $input_obj->cols_by_idx;
+            my $rows = $input_obj->rows_as_aohos;
+            $output = [200, "OK", $rows, {'table.fields' => $cols}];
+            last;
+        }
+
+        if ($action eq 'rowcount-row' || $action eq 'wc-row') {
+            my $cols = $input_obj->cols_by_idx;
+            my $rows = $input_obj->rows;
+            my $rowcount = $input_obj->row_count;
+            my $rowcount_row;
+            if (@$rows && ref $rows->[0] eq 'HASH') {
+                $rowcount_row = {rowcount=>$rowcount};
+            } elsif (@$rows && ref $rows->[0] eq 'ARRAY') {
+                $rowcount_row = [$rowcount];
+            } else {
+                $rowcount_row = $rowcount;
+            }
             $output = [200, "OK", [@$rows, $rowcount_row],
                        {'table.fields' => $cols}];
             last;
