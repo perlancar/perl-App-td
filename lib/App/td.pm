@@ -31,7 +31,7 @@ our %actions = (
     'sum-row' => {summary=>'Append a row containing sums'},
     'sum' => {summary=>'Return a row containing sum of all numeric columns'},
     'tail' => {summary=>'Only return the last N rows'},
-    'wc-row' => {summary=>'Alias for wc-row'},
+    'wc-row' => {summary=>'Alias for rowcount-row'},
     'wc' => {summary=>'Alias for rowcount'},
 );
 
@@ -97,59 +97,74 @@ names, number of rows, and so on).
 
 Next, you can use these actions:
 
-    # count number of rows (equivalent to "wc -l" Unix command)
-    % osnames -l --json | td rowcount
+ # List available actions
+ % td actions
 
-    # append a row containing rowcount
-    % osnames -l --json | td rowcount-row
+ # Calculate arithmetic average of numeric columns
+ % list-files -l --json | td avg
 
-    # return the column names only
-    % lcpan related-mods Perinci::CmdLine | td colnames
+ # Append a row at the end containing arithmetic average of number columns
+ % list-files -l --json | td avg-row
 
-    # append a row containing column names
-    % lcpan related-mods Perinci::CmdLine | td colnames-row
+ # Count number of columns
+ % osnames -l --json | td colcount
 
-    # count number of columns
-    % osnames -l --json | td colcount
+ # Append a single-column row at the end containing number of columns
+ % osnames -l --json | td colcount-row
 
-    # select some columns
-    % osnames -l --json | td select value description
-    # select all columns but some
-    % osnames -l --json | td select '*' -e value -e description
+ # Return the column names only
+ % lcpan related-mods Perinci::CmdLine | td colnames
 
-    # only show first 5 rows
-    % osnames -l --json | td head -n5
-    # show all but the last 5 rows
-    % osnames -l --json | td head -n -5
+ # append a row containing column names
+ % lcpan related-mods Perinci::CmdLine | td colnames-row
 
-    # only show last 5 rows
-    % osnames -l --json | td tail -n5
-    # show rows from the row 5 onwards
-    % osnames -l --json | td tail -n +5
+ # Only show first 5 rows
+ % osnames -l --json | td head -n5
 
-    # sort by column(s) (add "-" prefix to for descending order)
-    % osnames -l --json | td sort value tags
-    % osnames -l --json | td sort -- -value
+ # Show all but the last 5 rows
+ % osnames -l --json | td head -n -5
 
-    # return sum of all numeric columns
-    % list-files -l --json | td sum
+ # Check if input is table data and show information about the table
+ % osnames -l --json | td info
 
-    # append a sum row
-    % list-files -l --json | td sum-row
+ # Count number of rows
+ % osnames -l --json | td rowcount
+ % osnames -l --json | td wc            ;# shorter alias
 
-    # return average of all numeric columns
-    % list-files -l --json | td avg
+ # Append a single-column row containing row count
+ % osnames -l --json | td rowcount-row
+ % osnames -l --json | td wc-row        ;# shorter alias
 
-    # append an average row
-    % list-files -l --json | td avg-row
+ # Add a row number column (1, 2, 3, ...)
+ % list-files -l --json | td rownum-col
 
-    # add a row number column (1, 2, 3, ...)
-    % list-files -l --json | td rownum-col
+ # Select some columns
+ % osnames -l --json | td select value description
 
-Use this to list all the available actions:
+ # Select all columns but some
+ % osnames -l --json | td select '*' -e value -e description
 
-    % td actions
-    % td actions -l ;# show details
+ # Return the rows in a random order
+ % osnames -l --json | td shuf
+
+ # Pick 5 random rows from input
+ % osnames -l --json | td shuf -n5
+
+ # Sort by column(s) (add "-" prefix to for descending order)
+ % osnames -l --json | td sort value tags
+ % osnames -l --json | td sort -- -value
+
+ # Return sum of all numeric columns
+ % list-files -l --json | td sum
+
+ # Append a sum row
+ % list-files -l --json | td sum-row
+
+ # Only show last 5 rows
+ % osnames -l --json | td tail -n5
+
+ # Show rows from the row 5 onwards
+ % osnames -l --json | td tail -n +5
 
 _
     args => {
