@@ -1,3 +1,12 @@
+0.093   2019-09-15  Released-By: PERLANCAR; Urgency: medium
+
+	- Add actions: shuf (along with its option --repeat [-r]), as-aoaos,
+          as-aohos.
+
+	- [ux] head/tail/sum/sum-row/avg/avg-row: Return the input's form
+	  of row instead of coercing table data to aoaos.
+
+
 0.092   2019-01-16  Released-By: PERLANCAR
 
 	- Tweak CLI: skip reading config & env.
