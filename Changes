@@ -1,3 +1,17 @@
+0.097   2020-05-29  Released-By: PERLANCAR; Urgency: medium; Backward-Compatible: no
+
+	- Add action: grep-col, transpose.
+
+	- [incompatible change] Rename variables for perl code in 'grep' and
+	  'map', to be more consistent with App::CSVUtils: $ROW -> $row,
+	  $ROW_NUM -> $rownum, $ROW_HOS -> $rowhash, $ROW_AOS -> $rowarray.
+
+        - Add variable for 'grep' and 'map': $td.
+
+        - Rename actions grep -> grep-row (but grep still provided), map ->
+	  map-row (but map still provided).
+
+
 0.096   2020-05-29  Released-By: PERLANCAR; Urgency: medium
 
 	- Add action: as-csv.
