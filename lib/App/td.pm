@@ -234,6 +234,15 @@ Next, you can use these actions:
 
  % media-info *.mp4 | td grep 'use List::Util qw(min); min($_->{video_height}, $_->{video_width}) > 480'
 
+ # Use Perl code to filter columns. Perl code gets column name in $colname or
+ # $_. There's also $colidx (column index, from 1) and $td (table data object).
+ # If table data form is 'hash' or 'aos', it will be transformed into 'aoaos'.
+ # The example below only select even columns that match /col/i. Note that most
+ # of the time, 'td select' is better. But when you have a lot of columns and
+ # want to select them programmatically, you have grep-col.
+
+ % somecd --json | td grep-col '$colidx % 2 == 0 && /col/i'
+
  # Use Perl code to transform row. Perl code gets row in $row or $_
  # (scalar/hash/array) and is supposed to return the new row. As in 'grep',
  # $rowhash, $rowarray, $rownum, $td are also available as helper. The example
@@ -610,7 +619,7 @@ sub td {
                         local $main::rowarray = $input_rows_aos->[$row_num];
                         local $main::rowhash  = $input_rows_hos->[$row_num];
                         local $main::rownum   = $row_num;
-                        local $main::td       = $row_num;
+                        local $main::td       = $input_obj;
                         $code_res = $code->($_);
                     }
                     if ($action eq 'grep-row' || $action eq 'grep') {
@@ -624,6 +633,44 @@ sub td {
             }
 
             $output = [200, "OK", $output_rows, $input->[3]];
+            last;
+        }
+
+        if ($action =~ /\A(grep-col)\z/) {
+            return [400, "Usage: td $action <perl-code>"] unless @$argv == 1;
+            my $code_str = "package main; no strict; no warnings; sub { $argv->[0] }";
+            my $code = eval $code_str; die if $@;
+
+            my $input_cols = $input_obj->cols_by_idx;
+            my $output_cols = [];
+            for my $col_idx (0 .. $#{ $input_cols }) {
+                my $code_res;
+                {
+                    no warnings 'once';
+                    local $_              = $input_cols->[$col_idx];
+                    local $main::colname  = $input_cols->[$col_idx];
+                    local $main::colidx   = $col_idx;
+                    local $main::td       = $input_obj;
+                    $code_res = $code->($_);
+                }
+                push @$output_cols, $code_res ? $input_cols->[$col_idx] : undef;
+            }
+
+            if ($input_form eq 'hash' || $input_form eq 'aos') {
+                $input_obj = _get_td_obj($input_form->rows_as_aoaos);
+                $input_form = 'aoaos';
+            }
+            for my $col_idx (reverse 0..$#{ $output_cols }) {
+                unless (defined $output_cols->[$col_idx]) {
+                    $input_obj->del_col($col_idx);
+                }
+            }
+            $output = [
+                200,
+                "OK",
+                $input_form eq 'aohos' ? $input_obj->rows_as_aohos : $input_obj->rows_as_aoaos,
+                $input_form eq 'aohos' ? $input->[3] : undef
+            ];
             last;
         }
 
