@@ -38,11 +38,14 @@ our %actions = (
     'sum' => {summary=>'Return a row containing sum of all numeric columns'},
     'tail' => {summary=>'Only return the last N rows'},
     'transpose' => {summary=>'Transpose table'},
-    'wc-row' => {summary=>'Alias for rowcount-row'},
-    'wc' => {summary=>'Alias for rowcount'},
+    'wc-row' => {summary=>'Alias for rowcount-row', tags=>['alias']},
+    'wc' => {summary=>'Alias for rowcount', tags=>['alias']},
 
-    'grep' => {summary=>'Use Perl code to filter rows', tags=>['perl']},
-    'map' => {summary=>'Use Perl code to transform row', tags=>['perl']},
+    'grep-row' => {summary=>'Use Perl code to filter rows', tags=>['perl']},
+    'grep' => {summary=>'Alias for grep-row', tags=>['perl', 'alias']},
+    'grep-col' => {summary=>'Use Perl code to filter columns', tags=>['perl']},
+    'map-row' => {summary=>'Use Perl code to transform rows', tags=>['perl']},
+    'map' => {summary=>'Alias for map-row', tags=>['perl', 'alias']},
     'psort' => {summary=>'Use Perl code to transform row', tags=>['perl']},
 );
 
@@ -215,28 +218,34 @@ Next, you can use these actions:
 
  # Transpose table (make first column of rows as column names in the transposed
  # table)
+
  % osnames -l --json | td transpose
+
  # Transpose table (make columns named 'row1', 'row2', 'row3', ... in the
  # transposed table)
+
  % osnames -l --json | td transpose --no-header-column
 
- # Use Perl code to filter rows. Perl code gets row in $ROW or $_
- # (scalar/aos/hos) or $ROW_HOS (always a hos) or $ROW_AOS (always aos). There
- # is also $ROW_NUM (integer, starts at 0). Perl code is eval'ed in the 'main'
- # package with strict/warnings turned off. The example below selects videos
- # that are larger than 480p.
+ # Use Perl code to filter rows. Perl code gets row in $row or $_
+ # (scalar/aos/hos) or $rowhash (always a hos) or $rowarray (always aos). There
+ # are also $rownum (integer, starts at 0) and $td (table data object). Perl
+ # code is eval'ed in the 'main' package with strict/warnings turned off. The
+ # example below selects videos that are larger than 480p.
+
  % media-info *.mp4 | td grep 'use List::Util qw(min); min($_->{video_height}, $_->{video_width}) > 480'
 
- # Use Perl code to transform row. Perl code gets row in $ROW or $_
+ # Use Perl code to transform row. Perl code gets row in $row or $_
  # (scalar/hash/array) and is supposed to return the new row. As in 'grep',
- # $ROW_HOS, $ROW_AOS, $ROW_NUM are also available as helper. The example below
- # adds a field called 'is_landscape'.
+ # $rowhash, $rowarray, $rownum, $td are also available as helper. The example
+ # below adds a field called 'is_landscape'.
+
  % media-info *.jpg | td map '$_->{is_landscape} = $_->{video_height} < $_->{video_width} ? 1:0; $_'
 
  # Use perl code to sort rows. Perl sorter code gets row in $a & $b or $_[0] &
  # $_[1] (hash/array). Sorter code, like in Perl's standard sort(), is expected
  # to return -1/0/1. The example belows sort videos by height, descendingly then
  # by width, descendingly.
+
  % media-info *.mp4 | td psort '$b->{video_height} <=> $a->{video_height} || $b->{video_width} <=> $b->{video_width}'
 
 _
@@ -569,7 +578,7 @@ sub td {
             last;
         }
 
-        if ($action =~ /\A(grep|map|psort)\z/) {
+        if ($action =~ /\A(grep-row|grep|map-row|map|psort)\z/) {
             return [400, "Usage: td $action <perl-code>"] unless @$argv == 1;
             my $code_str;
             if ($action eq 'psort') {
@@ -589,21 +598,24 @@ sub td {
             my $input_rows_hos = $input_obj->rows_as_aohos;
 
             my $output_rows;
-            if ($action eq 'grep' || $action eq 'map') {
+            if ($action eq 'grep-row' || $action eq 'grep' ||
+                    $action eq 'map-row' || $action eq 'map'
+                ) {
                 for my $row_num (0 .. $#{ $input_rows }) {
                     my $code_res;
                     {
                         no warnings 'once';
-                        local $main::ROW_NUM = $row_num;
-                        local $_             = $input_rows->[$row_num];
-                        local $main::ROW     = $input_rows->[$row_num];
-                        local $main::ROW_AOS = $input_rows_aos->[$row_num];
-                        local $main::ROW_HOS = $input_rows_hos->[$row_num];
+                        local $_              = $input_rows->[$row_num];
+                        local $main::row      = $input_rows->[$row_num];
+                        local $main::rowarray = $input_rows_aos->[$row_num];
+                        local $main::rowhash  = $input_rows_hos->[$row_num];
+                        local $main::rownum   = $row_num;
+                        local $main::td       = $row_num;
                         $code_res = $code->($_);
                     }
-                    if ($action eq 'grep') {
+                    if ($action eq 'grep-row' || $action eq 'grep') {
                         push @$output_rows, $input_rows->[$row_num] if $code_res;
-                    } else { # map
+                    } else { # map-row / map
                         push @$output_rows, $code_res;
                     }
                 }
