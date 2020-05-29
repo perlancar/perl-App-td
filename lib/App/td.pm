@@ -19,6 +19,7 @@ our %actions = (
     'actions' => {summary=>'List available actions', req_input=>0},
     'as-aoaos' => {summary=>'Convert table data to aoaos form'},
     'as-aohos' => {summary=>'Convert table data to aohos form'},
+    'as-csv' => {summary=>'Convert table data to CSV'},
     'avg-row' => {summary=>'Append an average row'},
     'avg' => {summary=>'Return average of all numeric columns'},
     'colcount-row' => {summary=>'Append a row containing number of columns'},
@@ -141,6 +142,9 @@ Next, you can use these actions:
 
  # Convert table data (which might be hash, aos, or aoaos) to aohos form
  % list-files -l --json | td as-aohos
+
+ # Convert table data to CSV
+ % list-files -l --json | td as-csv
 
  # Calculate arithmetic average of numeric columns
  % list-files -l --json | td avg
@@ -337,6 +341,21 @@ sub td {
             my $cols = $input_obj->cols_by_idx;
             my $rows = $input_obj->rows_as_aoaos;
             $output = [200, "OK", $rows, {'table.fields' => $cols}];
+            last;
+        }
+
+        if ($action eq 'as-csv') {
+            require Text::CSV_XS;
+            my $csv = Text::CSV_XS->new({binary=>1}) or die "Can't instantiate CSV parser";
+            my $cols = $input_obj->cols_by_idx;
+            my $res = "";
+            $csv->combine(@$cols) or die "Can't combine header row to CSV: ".join(", ", @$cols);
+            $res .= $csv->string . "\n";
+            for my $row (@{ $input_obj->rows_as_aoaos }) {
+                $csv->combine(@$row) or die "Can't combine data row to CSV: ".join(", ", @$row);
+                $res .= $csv->string . "\n";
+            }
+            $output = [200, "OK", $res, {'cmdline.skip_format' => 1}];
             last;
         }
 
