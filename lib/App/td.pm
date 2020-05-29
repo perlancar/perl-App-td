@@ -542,9 +542,7 @@ sub td {
                 $code_str = join(
                     "",
                     "package main; no strict; no warnings; sub {",
-                    ' my $caller = caller();',
-                    ' my $a = @_ ? $_[0] : ${"$caller\::a"};',
-                    ' my $b = @_ ? $_[1] : ${"$caller\::b"};',
+                    ' my ($a, $b) = @_;',
                     " $argv->[0] }",
                 );
             } else {
@@ -576,7 +574,7 @@ sub td {
                     }
                 }
             } else { # psort
-                $output_rows = [sort $code @$input_rows];
+                $output_rows = [sort { $code->($a, $b) } @$input_rows];
             }
 
             $output = [200, "OK", $output_rows, $input->[3]];
