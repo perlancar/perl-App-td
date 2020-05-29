@@ -1,3 +1,10 @@
+0.100   2020-05-29  Released-By: PERLANCAR; Urgency: low
+
+        - No functional changes.
+
+        - [build] Rebuild with updated Perinci::CmdLine::POD to wrap usage line.
+
+
 0.097   2020-05-29  Released-By: PERLANCAR; Urgency: medium; Backward-Compatible: no
 
 	- Add action: grep-col, transpose.
