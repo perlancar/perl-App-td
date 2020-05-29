@@ -1,6 +1,8 @@
 package App::td;
 
+# AUTHORITY
 # DATE
+# DIST
 # VERSION
 
 use 5.010001;
@@ -36,6 +38,10 @@ our %actions = (
     'tail' => {summary=>'Only return the last N rows'},
     'wc-row' => {summary=>'Alias for rowcount-row'},
     'wc' => {summary=>'Alias for rowcount'},
+
+    'grep' => {summary=>'Use Perl code to filter rows', tags=>['perl']},
+    'map' => {summary=>'Use Perl code to transform row', tags=>['perl']},
+    'psort' => {summary=>'Use Perl code to transform row', tags=>['perl']},
 );
 
 sub _get_table_spec_from_envres {
@@ -64,6 +70,33 @@ sub _decode_json {
 
     state $json = Cpanel::JSON::XS->new->allow_nonref;
     $json->decode(shift);
+}
+
+sub _get_td_obj {
+    require Data::Check::Structure;
+
+    my $input = shift;
+    my ($input_form, $input_obj);
+    if (ref($input->[2]) eq 'HASH') {
+        $input_form = 'hash';
+        require TableData::Object::hash;
+        $input_obj = TableData::Object::hash->new($input->[2]);
+    } elsif (Data::Check::Structure::is_aos($input->[2])) {
+        $input_form = 'aos';
+        require TableData::Object::aos;
+        $input_obj = TableData::Object::aos->new($input->[2]);
+    } elsif (Data::Check::Structure::is_aoaos($input->[2])) {
+        $input_form = 'aoaos';
+        my $spec = _get_table_spec_from_envres($input);
+        require TableData::Object::aoaos;
+        $input_obj = TableData::Object::aoaos->new($input->[2], $spec);
+    } elsif (Data::Check::Structure::is_aohos($input->[2])) {
+        $input_form = 'aohos';
+        my $spec = _get_table_spec_from_envres($input);
+        require TableData::Object::aohos;
+        $input_obj = TableData::Object::aohos->new($input->[2], $spec);
+    }
+    ($input_form, $input_obj);
 }
 
 $SPEC{td} = {
@@ -175,6 +208,25 @@ Next, you can use these actions:
  # Show rows from the row 5 onwards
  % osnames -l --json | td tail -n +5
 
+ # Use Perl code to filter rows. Perl code gets row in $ROW or $_
+ # (scalar/aos/hos) or $ROW_HOS (always a hos) or $ROW_AOS (always aos). There
+ # is also $ROW_NUM (integer, starts at 0). Perl code is eval'ed in the 'main'
+ # package with strict/warnings turned off. The example below selects videos
+ # that are larger than 480p.
+ % media-info *.mp4 | td grep 'use List::Util qw(min); min($_->{video_height}, $_->{video_width}) > 480'
+
+ # Use Perl code to transform row. Perl code gets row in $ROW or $_
+ # (scalar/hash/array) and is supposed to return the new row. As in 'grep',
+ # $ROW_HOS, $ROW_AOS, $ROW_NUM are also available as helper. The example below
+ # adds a field called 'is_landscape'.
+ % media-info *.jpg | td map '$_->{is_landscape} = $_->{video_height} < $_->{video_width} ? 1:0; $_'
+
+ # Use perl code to sort rows. Perl sorter code gets row in $a & $b or $_[0] &
+ # $_[1] (hash/array). Sorter code, like in Perl's standard sort(), is expected
+ # to return -1/0/1. The example belows sort videos by height, descendingly then
+ # by width, descendingly.
+ % media-info *.mp4 | td psort '$b->{video_height} <=> $a->{video_height} || $b->{video_width} <=> $b->{video_width}'
+
 _
     args => {
         action => {
@@ -231,7 +283,6 @@ sub td {
   GET_INPUT:
     {
         last unless $actions{$action}{req_input} // 1;
-        require Data::Check::Structure;
         eval {
             local $/;
             $input = _decode_json(~~<STDIN>);
@@ -248,27 +299,9 @@ sub td {
         }
 
         # detect table form
-        if (ref($input->[2]) eq 'HASH') {
-            $input_form = 'hash';
-            require TableData::Object::hash;
-            $input_obj = TableData::Object::hash->new($input->[2]);
-        } elsif (Data::Check::Structure::is_aos($input->[2])) {
-            $input_form = 'aos';
-            require TableData::Object::aos;
-            $input_obj = TableData::Object::aos->new($input->[2]);
-        } elsif (Data::Check::Structure::is_aoaos($input->[2])) {
-            $input_form = 'aoaos';
-            my $spec = _get_table_spec_from_envres($input);
-            require TableData::Object::aoaos;
-            $input_obj = TableData::Object::aoaos->new($input->[2], $spec);
-        } elsif (Data::Check::Structure::is_aohos($input->[2])) {
-            $input_form = 'aohos';
-            my $spec = _get_table_spec_from_envres($input);
-            require TableData::Object::aohos;
-            $input_obj = TableData::Object::aohos->new($input->[2], $spec);
-        } else {
-            return [400, "Input is not table data, please feed a hash/aos/aoaos/aohos"];
-        }
+        ($input_form, $input_obj) = _get_td_obj($input);
+        return [400, "Input is not table data, please feed a hash/aos/aoaos/aohos"]
+            unless $input_form;
     } # GET_INPUT
 
     my $output;
@@ -499,6 +532,54 @@ sub td {
                 $resmeta->{'table.field_units'}   = $tfu;
             }
             $output = [200, "OK", $res->{data}, $resmeta];
+            last;
+        }
+
+        if ($action =~ /\A(grep|map|psort)\z/) {
+            return [400, "Usage: td $action <perl-code>"] unless @$argv == 1;
+            my $code_str;
+            if ($action eq 'psort') {
+                $code_str = join(
+                    "",
+                    "package main; no strict; no warnings; sub {",
+                    ' my $caller = caller();',
+                    ' my $a = @_ ? $_[0] : ${"$caller\::a"};',
+                    ' my $b = @_ ? $_[1] : ${"$caller\::b"};',
+                    " $argv->[0] }",
+                );
+            } else {
+                $code_str = "package main; no strict; no warnings; sub { $argv->[0] }";
+            }
+            my $code = eval $code_str; die if $@;
+
+            my $input_rows     = $input_obj->rows;
+            my $input_rows_aos = $input_obj->rows_as_aoaos;
+            my $input_rows_hos = $input_obj->rows_as_aohos;
+
+            my $output_rows;
+            if ($action eq 'grep' || $action eq 'map') {
+                for my $row_num (0 .. $#{ $input_rows }) {
+                    my $code_res;
+                    {
+                        no warnings 'once';
+                        local $main::ROW_NUM = $row_num;
+                        local $_             = $input_rows->[$row_num];
+                        local $main::ROW     = $input_rows->[$row_num];
+                        local $main::ROW_AOS = $input_rows_aos->[$row_num];
+                        local $main::ROW_HOS = $input_rows_hos->[$row_num];
+                        $code_res = $code->($_);
+                    }
+                    if ($action eq 'grep') {
+                        push @$output_rows, $input_rows->[$row_num] if $code_res;
+                    } else { # map
+                        push @$output_rows, $code_res;
+                    }
+                }
+            } else { # psort
+                $output_rows = [sort $code @$input_rows];
+            }
+
+            $output = [200, "OK", $output_rows, $input->[3]];
             last;
         }
 
