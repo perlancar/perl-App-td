@@ -37,6 +37,7 @@ our %actions = (
     'sum-row' => {summary=>'Append a row containing sums'},
     'sum' => {summary=>'Return a row containing sum of all numeric columns'},
     'tail' => {summary=>'Only return the last N rows'},
+    'transpose' => {summary=>'Transpose table'},
     'wc-row' => {summary=>'Alias for rowcount-row'},
     'wc' => {summary=>'Alias for rowcount'},
 
@@ -212,6 +213,13 @@ Next, you can use these actions:
  # Show rows from the row 5 onwards
  % osnames -l --json | td tail -n +5
 
+ # Transpose table (make first column of rows as column names in the transposed
+ # table)
+ % osnames -l --json | td transpose
+ # Transpose table (make columns named 'row1', 'row2', 'row3', ... in the
+ # transposed table)
+ % osnames -l --json | td transpose --no-header-column
+
  # Use Perl code to filter rows. Perl code gets row in $ROW or $_
  # (scalar/aos/hos) or $ROW_HOS (always a hos) or $ROW_AOS (always aos). There
  # is also $ROW_NUM (integer, starts at 0). Perl code is eval'ed in the 'main'
@@ -275,6 +283,13 @@ _
             schema => ['array*', of=>'str*'],
             cmdline_aliases => {e=>{}},
             tags => ['category:select-action'],
+        },
+
+        no_header_column => {
+            summary => "Don't make the first column as column names of the transposed table; ".
+                "instead create column named 'row1', 'row2', ...",
+            schema => 'true*',
+            tags => ['category:transpose-action'],
         },
     },
 };
@@ -597,6 +612,31 @@ sub td {
             }
 
             $output = [200, "OK", $output_rows, $input->[3]];
+            last;
+        }
+
+        if ($action eq 'transpose') {
+            my $input_rows = $input_obj->rows_as_aoaos;
+            my $input_cols = $input_obj->cols_by_idx;
+
+            my @output_cols;
+            if ($args{no_header_column} || !@$input_rows) {
+                @output_cols = map {"row$_"} 1 .. @$input_rows;
+            } else {
+                @output_cols = map { $input_rows->[$_-1][0] } 1 .. @$input_rows;
+            }
+
+            my @output_rows;
+
+            for my $inputrowidx (0..$#{ $input_rows }) {
+                my $inputrow = $input_rows->[$inputrowidx];
+                for my $inputcolidx (0..$#{ $input_cols }) {
+                    $output_rows[$inputcolidx] //= [];
+                    $output_rows[$inputcolidx][$inputrowidx] = $inputrow->[$inputcolidx];
+                }
+            }
+
+            $output = [200, "OK", \@output_rows, {'table.fields'=>\@output_cols}];
             last;
         }
 
