@@ -84,13 +84,13 @@ sub _get_td_obj {
     my $input = shift;
     my ($input_form, $input_obj, $input_form_err);
 
-  CHECK: {
+  CHECK_STRUCT: {
         if (Data::Check::Structure::is_aohos($input->[2])) {
             $input_form = 'aohos';
             my $spec = _get_table_spec_from_envres($input);
             require TableData::Object::aohos;
             $input_obj = TableData::Object::aohos->new($input->[2], $spec);
-            last CHECK;
+            last CHECK_STRUCT;
         } else {
             $input_form_err ||= $Data::Check::Structure::errstr;
         }
@@ -100,7 +100,7 @@ sub _get_td_obj {
             my $spec = _get_table_spec_from_envres($input);
             require TableData::Object::aoaos;
             $input_obj = TableData::Object::aoaos->new($input->[2], $spec);
-            last CHECK;
+            last CHECK_STRUCT;
         } else {
             $input_form_err ||= $Data::Check::Structure::errstr;
         }
@@ -109,7 +109,7 @@ sub _get_td_obj {
             $input_form = 'aos';
             require TableData::Object::aos;
             $input_obj = TableData::Object::aos->new($input->[2]);
-            last CHECK;
+            last CHECK_STRUCT;
         } else {
             $input_form_err ||= $Data::Check::Structure::errstr;
         }
@@ -118,7 +118,7 @@ sub _get_td_obj {
             $input_form = 'hos';
             require TableData::Object::hash;
             $input_obj = TableData::Object::hash->new($input->[2]);
-            last CHECK;
+            last CHECK_STRUCT;
         } else {
             $input_form_err ||= $Data::Check::Structure::errstr;
         }
