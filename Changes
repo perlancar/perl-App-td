@@ -1,6 +1,6 @@
 0.104   2022-06-02  Released-By: PERLANCAR; Urgency: medium
 
-        [subcommand shuf]
+        [action shuf]
 
         - [ux] Add 'pick' as alias name.
 
@@ -21,7 +21,7 @@
 
 0.101   2020-11-08  Released-By: PERLANCAR; Urgency: medium
 
-	- Add subcommand 'cat'.
+	- Add action 'cat'.
 
         - Switch from using Perinci::CmdLine::Inline to Perinci::CmdLine::Lite
 	  to enable format html+datatables.
