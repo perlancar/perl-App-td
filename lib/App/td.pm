@@ -1,10 +1,5 @@
 package App::td;
 
-# AUTHORITY
-# DATE
-# DIST
-# VERSION
-
 use 5.010001;
 #IFUNBUILT
 use strict;
@@ -12,6 +7,11 @@ use warnings;
 #END IFUNBUILT
 
 use PerlX::Maybe;
+
+# AUTHORITY
+# DATE
+# DIST
+# VERSION
 
 our %SPEC;
 
@@ -136,11 +136,15 @@ $SPEC{td} = {
     summary => 'Manipulate table data',
     description => <<'_',
 
+**What is td?**
+
 *td* receives table data from standard input and performs an action on it. It
 has functionality similar to some Unix commands like *head*, *tail*, *wc*,
 *cut*, *sort* except that it operates on table rows/columns instead of
 lines/characters. This is convenient to use with CLI scripts that output table
 data.
+
+**What is table data?**
 
 A _table data_ is JSON-encoded data in the form of either: `hos` (hash of
 scalars, which is viewed as a two-column table where the columns are `key` and
@@ -152,6 +156,14 @@ The input can also be an _enveloped_ table data, where the envelope is an array:
 `[status, message, content, meta]` and `content` is the actual table data. This
 kind of data is produced by `Perinci::CmdLine`-based scripts and can contain
 more detailed table specification in the `meta` hash, which `td` can parse.
+
+If you have a CSV, you can easily convert it to table data using the *csv2td*
+utility:
+
+    % csv2td YOUR.csv | td ...
+    % program-that-outputs-csv | csv2td | td ...
+
+**Using td**
 
 First you might want to use the `info` action to see if the input is a table
 data:
