@@ -1,10 +1,8 @@
 package App::td;
 
 use 5.010001;
-#IFUNBUILT
 use strict;
 use warnings;
-#END IFUNBUILT
 
 use PerlX::Maybe;
 
@@ -57,7 +55,7 @@ sub _get_table_spec_from_envres {
     my $tfa = $envres->[3]{'table.field_aligns'};
     my $tff = $envres->[3]{'table.field_formats'};
     my $tfu = $envres->[3]{'table.field_units'};
-    return undef unless $tf;
+    return undef unless $tf; ## no critic: BuiltinFunctions::ProhibitStringyEval
     my $spec = {fields=>{}};
     my $i = 0;
     for (@$tf) {
@@ -670,7 +668,7 @@ sub td {
             } else {
                 $code_str = "package main; no strict; no warnings; sub { $argv->[0] }";
             }
-            my $code = eval $code_str; die if $@;
+            my $code = eval $code_str; die if $@; ## no critic: BuiltinFunctions::ProhibitStringyEval
 
             my $input_rows     = $input_obj->rows;
             my $input_rows_aos = $input_obj->rows_as_aoaos;
@@ -709,7 +707,7 @@ sub td {
         if ($action =~ /\A(grep-col)\z/) {
             return [400, "Usage: td $action <perl-code>"] unless @$argv == 1;
             my $code_str = "package main; no strict; no warnings; sub { $argv->[0] }";
-            my $code = eval $code_str; die if $@;
+            my $code = eval $code_str; die if $@; ## no critic: BuiltinFunctions::ProhibitStringyEval
 
             my $input_cols = $input_obj->cols_by_idx;
             my $output_cols = [];
