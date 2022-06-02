@@ -29,6 +29,7 @@ our %actions = (
     'colnames-row' => {summary=>'Append a row containing column names'},
     'head' => {summary=>'Only return the first N rows'},
     'info' => {summary=>'Check if input is table data and show information about the table'},
+    'pick' => {summary=>'Pick one or more random rows, alias for `shuf`'},
     'rowcount-row' => {summary=>'Count number of rows (equivalent to "wc -l" in Unix)'},
     'rowcount' => {summary=>'Append a row containing rowcount'},
     'rownum-col' => {summary=>'Add a column containing row number'},
@@ -322,7 +323,7 @@ _
         lines => {
             schema => ['str*', match=>qr/\A[+-]?[0-9]+\z/],
             cmdline_aliases => {n=>{}},
-            tags => ['category:head-action', 'category:tail-action'],
+            tags => ['category:head-action', 'category:tail-action', 'category:pick-action'],
         },
 
         detail => {
@@ -335,7 +336,13 @@ _
             summary => 'Allow duplicates',
             schema => 'bool*',
             cmdline_aliases => {r=>{}},
-            tags => ['category:shuf-action'],
+            tags => ['category:shuf-action', 'category:pick-action'],
+        },
+
+        weight_column => {
+            summary => 'Select a column that contains weight',
+            schema => 'str*',
+            tags => ['category:shuf-action', 'category:pick-action'],
         },
 
         exclude_columns => {
@@ -576,19 +583,33 @@ sub td {
             last;
         }
 
-        if ($action eq 'shuf') {
+        if ($action eq 'shuf' || $action eq 'pick') {
             my $cols = $input_obj->cols_by_idx;
             my $input_rows = $input_obj->rows;
+            my $weight_column_idx = defined $args{weight_column} ?
+                $input_obj->col_idx($args{weight_column}) : undef;
             my @output_rows;
             if ($args{repeat}) {
-                for my $i (1 .. ($args{lines} // scalar(@$input_rows))) {
-                    $output_rows[$i-1] = $input_rows->[rand() * @$input_rows];
+                if (defined $weight_column_idx) {
+                    require Array::Sample::WeightedRandom;
+                    my @ary = map { [$input_rows->[$_], $input_rows->[$_][$weight_column_idx]] } 0 .. scalar(@$input_rows);
+                    @output_rows = Array::Sample::WeightedRandom::sample_weighted_random_with_replacement(\@ary, ($args{lines} // scalar(@$input_rows)));
+                } else {
+                    for my $i (1 .. ($args{lines} // scalar(@$input_rows))) {
+                        $output_rows[$i-1] = $input_rows->[rand() * @$input_rows];
+                    }
                 }
             } else {
-                require List::MoreUtils;
-                @output_rows = List::MoreUtils::samples(
-                    $args{lines} // scalar(@$input_rows),
-                    @$input_rows);
+                if (defined $weight_column_idx) {
+                    require Array::Sample::WeightedRandom;
+                    my @ary = map { [$input_rows->[$_], $input_rows->[$_][$weight_column_idx]] } 0 .. scalar(@$input_rows);
+                    @output_rows = Array::Sample::WeightedRandom::sample_weighted_random_no_replacement(\@ary, ($args{lines} // scalar(@$input_rows)));
+                } else {
+                    require List::MoreUtils;
+                    @output_rows = List::MoreUtils::samples(
+                        $args{lines} // scalar(@$input_rows),
+                        @$input_rows);
+                }
             }
             $output = [200, "OK", \@output_rows, {'table.fields' => $cols}];
             last;
