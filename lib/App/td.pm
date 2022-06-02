@@ -27,7 +27,8 @@ our %actions = (
     'colnames-row' => {summary=>'Append a row containing column names'},
     'head' => {summary=>'Only return the first N rows'},
     'info' => {summary=>'Check if input is table data and show information about the table'},
-    'pick' => {summary=>'Pick one or more random rows, alias for `shuf`'},
+    'nauniq' => {summary=>'Remove non-adjacent duplicates'},
+    'pick' => {summary=>'Pick one or more random rows, alias for `shuf`', tags=>['alias']},
     'rowcount-row' => {summary=>'Count number of rows (equivalent to "wc -l" in Unix)'},
     'rowcount' => {summary=>'Append a row containing rowcount'},
     'rownum-col' => {summary=>'Add a column containing row number'},
@@ -38,6 +39,7 @@ our %actions = (
     'sum' => {summary=>'Return a row containing sum of all numeric columns'},
     'tail' => {summary=>'Only return the last N rows'},
     'transpose' => {summary=>'Transpose table'},
+    'uniq' => {summary=>'Remove adjacent duplicates'},
     'wc-row' => {summary=>'Alias for rowcount-row', tags=>['alias']},
     'wc' => {summary=>'Alias for rowcount', tags=>['alias']},
 
@@ -347,8 +349,15 @@ _
             'x.name.is_plural' => 1,
             'x.name.singular' => 'exclude_column',
             schema => ['array*', of=>'str*'],
-            cmdline_aliases => {e=>{}},
-            tags => ['category:select-action'],
+            cmdline_aliases => {E=>{}},
+            tags => ['category:select-action', 'category:uniq-action', 'category:nauniq-action'],
+        },
+        include_columns => {
+            'x.name.is_plural' => 1,
+            'x.name.singular' => 'include_column',
+            schema => ['array*', of=>'str*'],
+            cmdline_aliases => {I=>{}},
+            tags => ['category:select-action', 'category:uniq-action', 'category:nauniq-action'],
         },
 
         no_header_column => {
@@ -609,6 +618,44 @@ sub td {
                         @$input_rows);
                 }
             }
+            $output = [200, "OK", \@output_rows, {'table.fields' => $cols}];
+            last;
+        }
+
+        if ($action eq 'uniq' || $action eq 'nauniq') {
+            my $cols = $input_obj->cols_by_idx;
+            my $input_rows = $input_obj->rows;
+            my @indexes =
+                defined($args{include_columns}) ? (map { $input_obj->col_idx($_) } @{$args{include_columns}}) :
+                defined($args{exclude_columns}) ? do {
+                    my @exclude_idxs = map map { $input_obj->col_idx($_) } @{$args{exclude_columns}};
+                    my @indexes;
+                    for my $col (0 .. $#{$cols}) {
+                        push @indexes, $col unless grep { $col == $_ } @exclude_idxs;
+                    }
+                    @indexes;
+                } : (0 .. $#{$cols});
+
+            my @output_rows;
+            if ($action eq 'uniq') {
+                my $prev_row_as_str;
+                for my $rownum (0 .. $#{$input_rows}) {
+                    my $row_as_str = join "\0", @{ $input_rows->[$rownum] }[@indexes];
+                    if (!defined($prev_row_as_str) || $prev_row_as_str ne $row_as_str) {
+                        push @output_rows, $input_rows->[$rownum];
+                    }
+                    $prev_row_as_str = $row_as_str;
+                }
+            } else { # nauniq
+                my %seen;
+                for my $rownum (0 .. $#{$input_rows}) {
+                    my $row_as_str = join "\0", @{ $input_rows->[$rownum] }[@indexes];
+                    if (!$seen{$row_as_str}++) {
+                        push @output_rows, $input_rows->[$rownum];
+                    }
+                }
+            }
+
             $output = [200, "OK", \@output_rows, {'table.fields' => $cols}];
             last;
         }
