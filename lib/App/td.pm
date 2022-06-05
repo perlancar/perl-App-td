@@ -643,6 +643,7 @@ sub td {
                     @indexes;
                 } : (0 .. $#{$cols});
 
+            #use DD; dd \@indexes;
             my @output_rows;
             if ($action eq 'uniq') {
                 my $prev_row_as_str;
