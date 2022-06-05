@@ -242,6 +242,7 @@ Next, you can use these actions:
 
     # Pick 5 random rows from input
     % osnames -l --json | td shuf -n5
+    % osnames -l --json | td pick -n5  ;# synonym for 'shuf'
 
     # Sort by column(s) (add "-" prefix to for descending order)
     % osnames -l --json | td sort value tags
@@ -346,11 +347,24 @@ _
             tags => ['category:actions-action'],
         },
 
-        repeat => {
-            summary => 'Allow duplicates',
+        repeated => {
+            summary => 'Allow/show duplicates',
             schema => 'bool*',
             cmdline_aliases => {r=>{}},
-            tags => ['category:shuf-action', 'category:pick-action'],
+            tags => [
+                'category:shuf-action', 'category:pick-action',
+                'category:uniq-action', 'category:nauniq-action',
+            ],
+            description => <<'_',
+
+For shuf/pick actions, setting this option means sampling with replacement which
+makes a single row can be sampled/picked multiple times. The default is to
+sample without replacement.
+
+For uniq/nauniq actions, setting this option means instructing to return
+duplicate rows instead of the unique rows.
+
+_
         },
 
         weight_column => {
@@ -616,7 +630,7 @@ sub td {
             my $weight_column_idx = defined $args{weight_column} ?
                 $input_obj->col_idx($args{weight_column}) : undef;
             my @output_rows;
-            if ($args{repeat}) {
+            if ($args{repeated}) {
                 if (defined $weight_column_idx) {
                     require Array::Sample::WeightedRandom;
                     my @ary = map { [$input_rows->[$_], $input_rows->[$_][$weight_column_idx]] } 0 .. scalar(@$input_rows);
@@ -661,21 +675,38 @@ sub td {
             my @output_rows;
             if ($action eq 'uniq') {
                 my $prev_row_as_str;
+                my %seen_dupes;
                 for my $rownum (0 .. $#{$input_rows}) {
                     my $row_as_str = join "\0", @{ $input_rows->[$rownum] }[@indexes];
                     $row_as_str = lc $row_as_str if $ci;
                     if (!defined($prev_row_as_str) || $prev_row_as_str ne $row_as_str) {
-                        push @output_rows, $input_rows->[$rownum];
+                        if ($args{repeated}) {
+                            %seen_dupes = ();
+                        } else {
+                            push @output_rows, $input_rows->[$rownum];
+                        }
+                    } else {
+                        if ($args{repeated}) {
+                            push @output_rows, $input_rows->[$rownum] unless $seen_dupes{$row_as_str}++;
+                        }
                     }
                     $prev_row_as_str = $row_as_str;
                 }
             } else { # nauniq
                 my %seen;
+                my %seen_dupes;
                 for my $rownum (0 .. $#{$input_rows}) {
                     my $row_as_str = join "\0", @{ $input_rows->[$rownum] }[@indexes];
                     $row_as_str = lc $row_as_str if $ci;
                     if (!$seen{$row_as_str}++) {
-                        push @output_rows, $input_rows->[$rownum];
+                        if (!$args{repeated}) {
+                            push @output_rows, $input_rows->[$rownum];
+                        }
+                    } else {
+                        if ($args{repeated}) {
+                            push @output_rows, $input_rows->[$rownum]
+                                unless $seen_dupes{$row_as_str}++;
+                        }
                     }
                 }
             }
