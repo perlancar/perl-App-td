@@ -259,6 +259,20 @@ Next, you can use these actions:
     # Show rows from the row 5 onwards
     % osnames -l --json | td tail -n +5
 
+    # Remove adjacent duplicate rows:
+    % command ... | td uniq
+    % command ... | td uniq -i ;# case-insensitive
+    % command ... | td uniq --repeated ;# only shows the duplicate rows
+    % command ... | td uniq -i C1 -i C2 ;# only use columns C1 & C2 to check uniqueness
+    % command ... | td uniq -e C5 -e C6 ;# use all columns but C5 & C6 to check uniqueness
+
+    # Remove non-adjacent duplicate rows:
+    % command ... | td nauniq
+    % command ... | td nauniq -i ;# case-insensitive
+    % command ... | td nauniq --repeated ;# only shows the duplicate rows
+    % command ... | td nauniq -i C1 -i C2 ;# only use columns C1 & C2 to check uniqueness
+    % command ... | td nauniq -e C5 -e C6 ;# use all columns but C5 & C6 to check uniqueness
+
     # Transpose table (make first column of rows as column names in the
     # transposed table)
 
