@@ -1,3 +1,10 @@
+0.108   2023-01-27  Released-By: PERLANCAR; Urgency: low
+
+        - No functional changes.
+
+        - [doc] Update examples in description (-e is now -E).
+
+
 0.107   2022-06-05  Released-By: PERLANCAR; Urgency: medium
 
         - [incompatible change] Rename option name --repeat to --repeated.
