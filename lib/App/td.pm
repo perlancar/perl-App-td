@@ -235,7 +235,7 @@ Next, you can use these actions:
     % osnames -l --json | td select value description
 
     # Select all columns but some
-    % osnames -l --json | td select '*' -e value -e description
+    % osnames -l --json | td select '*' -E value -E description
 
     # Return the rows in a random order
     % osnames -l --json | td shuf
@@ -265,14 +265,14 @@ Next, you can use these actions:
     % command ... | td uniq -i ;# case-insensitive
     % command ... | td uniq --repeated ;# only shows the duplicate rows
     % command ... | td uniq -i C1 -i C2 ;# only use columns C1 & C2 to check uniqueness
-    % command ... | td uniq -e C5 -e C6 ;# use all columns but C5 & C6 to check uniqueness
+    % command ... | td uniq -E C5 -E C6 ;# use all columns but C5 & C6 to check uniqueness
 
     # Remove non-adjacent duplicate rows:
     % command ... | td nauniq
     % command ... | td nauniq -i ;# case-insensitive
     % command ... | td nauniq --repeated ;# only shows the duplicate rows
     % command ... | td nauniq -i C1 -i C2 ;# only use columns C1 & C2 to check uniqueness
-    % command ... | td nauniq -e C5 -e C6 ;# use all columns but C5 & C6 to check uniqueness
+    % command ... | td nauniq -E C5 -E C6 ;# use all columns but C5 & C6 to check uniqueness
 
     # Transpose table (make first column of rows as column names in the
     # transposed table)
