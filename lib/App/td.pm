@@ -145,6 +145,7 @@ has functionality similar to some Unix commands like *head*, *tail*, *wc*,
 lines/characters. This is convenient to use with CLI scripts that output table
 data.
 
+
 **What is table data?**
 
 A _table data_ is JSON-encoded data in the form of either: `hos` (hash of
@@ -158,11 +159,37 @@ The input can also be an _enveloped_ table data, where the envelope is an array:
 kind of data is produced by `Perinci::CmdLine`-based scripts and can contain
 more detailed table specification in the `meta` hash, which `td` can parse.
 
-If you have a CSV, you can easily convert it to table data using the *csv2td*
-utility:
+
+**What scripts/modules output table data?**
+
+CLI scripts that are written using <pm:Perinci::CmdLine> framework output
+enveloped table data. There are at least hundreds of such scripts on CPAN. Some
+examples include: <prog:lcpan> (from <pm:App::lcpan>), <prog:pmlist> (from
+<pm:App::PMUtils>), and <prog:bencher> (from <pm:Bencher>).
+
+`TableData::*` modules contain table data. They can easily be output to CLI
+using the <prog:tabledata> utility (from <pm:App::TableDataUtils>).
+
+CSV output from any module/script can be easily converted to table data using
+the <prog:csv2td> utility:
 
     % csv2td YOUR.csv | td ...
     % program-that-outputs-csv | csv2td - | td ...
+
+Table data can also be converted from several other formats e.g. JSON, YAML,
+XLS/XLSX/ODS.
+
+
+**What scripts/modules accept table data?**
+
+This *td* script, for one, accept table data.
+
+If a module/script expects CSV, you can feed table data and convert it to CSV
+using <prog:td2csv> utility.
+
+Several other formats can also be converted to table data, e.g. JSON,
+YAML, XLS/XLSX/ODS.
+
 
 **Using td**
 
