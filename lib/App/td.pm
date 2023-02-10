@@ -184,8 +184,8 @@ XLS/XLSX/ODS.
 
 This *td* script, for one, accepts table data.
 
-If a module/script expects CSV, you can feed table data and convert it to CSV
-using <prog:td2csv> utility.
+If a module/script expects CSV, you can feed it table data and convert the table
+data to CSV using <prog:td2csv> utility.
 
 Several other formats can also be converted to table data, e.g. JSON,
 YAML, XLS/XLSX/ODS.
