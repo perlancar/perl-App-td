@@ -182,7 +182,7 @@ XLS/XLSX/ODS.
 
 **What scripts/modules accept table data?**
 
-This *td* script, for one, accept table data.
+This *td* script, for one, accepts table data.
 
 If a module/script expects CSV, you can feed table data and convert it to CSV
 using <prog:td2csv> utility.
