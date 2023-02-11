@@ -347,7 +347,7 @@ _
     args => {
         action => {
             summary => 'Action to perform on input table',
-            schema => ['str*', in => [sort keys %actions]],
+            schema => ['str*', in => [sort keys %actions], 'x.in.summaries' => [map {$actions{$_}{summary}} sort keys %actions], ],
             req => 1,
             pos => 0,
             description => <<'_',
