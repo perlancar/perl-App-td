@@ -86,7 +86,7 @@
         - [build] Rebuild with updated Perinci::CmdLine::POD to wrap usage line.
 
 
-0.097   2020-05-29  Released-By: PERLANCAR; Urgency: medium; Backward-Compatible: no
+0.097   2020-05-29  Released-By: PERLANCAR; Urgency: medium; Backward-Incompatible: yes
 
 	- Add action: grep-col, transpose.
 
